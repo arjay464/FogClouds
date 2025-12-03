@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+
 public class DeckManager : MonoBehaviour
 {
     [Header("Card Prefab")]
@@ -18,6 +19,10 @@ public class DeckManager : MonoBehaviour
     [Header("Input")]
     public InputActionAsset drawDiscardTest;
 
+    [Header("Card Fan Settings")]
+    public float cardSpacing; 
+    public float arcSeverity;
+    public float maxRotation; 
     private InputAction drawAction;
     private List<CardData> drawPile = new List<CardData>();
     private List<CardData> discardPile = new List<CardData>();
@@ -84,6 +89,8 @@ public class DeckManager : MonoBehaviour
 
         cardsInHand.Add(cardObject);
 
+        RefreshHandLayout();
+
         Debug.Log($"Drew {drawnCard.cardName}. {drawPile.Count} left in draw pile.");
 
     }
@@ -101,6 +108,8 @@ public class DeckManager : MonoBehaviour
         cardsInHand.Remove(cardObject);
 
         Destroy(cardObject);
+
+        RefreshHandLayout();
     }
 
     void ShuffleDeck()
@@ -114,6 +123,29 @@ public class DeckManager : MonoBehaviour
             drawPile[i] = drawPile[randomIndex];
             drawPile[randomIndex] = temp;
         }
+    }
+
+    void RefreshHandLayout()
+    {
+        if (cardsInHand.Count <= 1)
+        {
+            return;
+        } 
+
+        for (int i = 0; i < cardsInHand.Count; i++)
+        {
+            float normalizedPosition = i / (float)(cardsInHand.Count - 1) * 2f - 1f;
+            float totalWidth = (cardsInHand.Count - 1) * cardSpacing;
+            float xPosition = -totalWidth / 2f + i * cardSpacing;
+            float yPosition = Mathf.Abs(normalizedPosition) * arcSeverity;
+            float rotation = normalizedPosition * maxRotation * -1f;
+
+            RectTransform rT = cardsInHand[i].GetComponent<RectTransform>();
+            rT.anchoredPosition = new Vector2(xPosition, yPosition);
+            rT.localRotation = Quaternion.Euler(0, 0, rotation);
+        }
+        
+
     }
     
     

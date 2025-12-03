@@ -3,6 +3,11 @@ using UnityEngine.EventSystems;
 
 public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
+
+    [Header("Animation Settings")]
+
+    public float opacity;
+    
     private Canvas canvas;
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
@@ -43,7 +48,7 @@ public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     {
         originalPosition = rectTransform.anchoredPosition;
         originalParent = transform.parent;
-        canvasGroup.alpha = 0.6f;
+        canvasGroup.alpha = opacity;
         canvasGroup.blocksRaycasts = false;
     }
 
