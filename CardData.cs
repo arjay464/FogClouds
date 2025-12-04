@@ -39,7 +39,7 @@ public class CardData : ScriptableObject
     public enum Cost
     {
         hp,
-        blood,
+        bloodVials,
         mistforce,
         gold,
 

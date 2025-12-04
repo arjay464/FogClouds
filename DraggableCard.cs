@@ -1,12 +1,19 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
+public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
 
+    
+    
     [Header("Animation Settings")]
 
     public float opacity;
+    public float hoverScale;
+
+    [Header("Public Flags (Do Not Touch)")]
+
+    public bool isDragging;
     
     private Canvas canvas;
     private RectTransform rectTransform;
@@ -14,6 +21,12 @@ public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     private Vector2 originalPosition;
     private Transform originalParent;
     private DeckManager deckManager;
+
+    private ResourceManager resourceManager;
+
+    private Vector3 originalScale;
+    private int originalSiblingIndex;
+    
 
 
     void Awake()
@@ -31,6 +44,10 @@ public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     {
         canvas = GetComponentInParent<Canvas>();
         deckManager = FindFirstObjectByType<DeckManager>();
+        resourceManager = FindFirstObjectByType<ResourceManager>();
+
+        originalScale = transform.localScale;
+        
 
         if (canvas == null)
         {
@@ -50,6 +67,7 @@ public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         originalParent = transform.parent;
         canvasGroup.alpha = opacity;
         canvasGroup.blocksRaycasts = false;
+        isDragging = true;
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -75,23 +93,52 @@ public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        isDragging = false;
         canvasGroup.alpha = 1f;
         canvasGroup.blocksRaycasts = true;
+        transform.localScale = originalScale;
+
+
 
         if (!IsPointerOverHandContainer(eventData))
         {
             if (deckManager != null)
             {
-                deckManager.DiscardCard(gameObject);
+                if (resourceManager.IsCardPlayable(gameObject))
+                {
+                    resourceManager.PlayCard(gameObject);
+                }
             }
         }
         else
         {
             rectTransform.anchoredPosition = originalPosition;
+            deckManager.RefreshHandLayout();
         }
+
+        
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        transform.localScale = originalScale * hoverScale;
+        originalSiblingIndex = transform.GetSiblingIndex();
+        transform.SetAsLastSibling();
     }
     
-    
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (!isDragging)
+        {
+            transform.localScale = originalScale;
+
+            transform.SetSiblingIndex(originalSiblingIndex);
+
+            
+        }
+
+        deckManager.RefreshHandLayout();
+    }
     
 
 }

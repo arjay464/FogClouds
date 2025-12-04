@@ -125,27 +125,39 @@ public class DeckManager : MonoBehaviour
         }
     }
 
-    void RefreshHandLayout()
+    public void RefreshHandLayout()
     {
-        if (cardsInHand.Count <= 1)
+        if (cardsInHand.Count == 0)
         {
             return;
-        } 
+        }
 
         for (int i = 0; i < cardsInHand.Count; i++)
         {
-            float normalizedPosition = i / (float)(cardsInHand.Count - 1) * 2f - 1f;
-            float totalWidth = (cardsInHand.Count - 1) * cardSpacing;
-            float xPosition = -totalWidth / 2f + i * cardSpacing;
-            float yPosition = Mathf.Abs(normalizedPosition) * arcSeverity;
-            float rotation = normalizedPosition * maxRotation * -1f;
+            DraggableCard dC = cardsInHand[i].GetComponent<DraggableCard>();
 
-            RectTransform rT = cardsInHand[i].GetComponent<RectTransform>();
-            rT.anchoredPosition = new Vector2(xPosition, yPosition);
-            rT.localRotation = Quaternion.Euler(0, 0, rotation);
+            if (!dC.isDragging)
+            {
+
+                cardsInHand[i].transform.SetSiblingIndex(i);
+                float normalizedPosition = 0;
+
+                if (cardsInHand.Count > 1)
+                {
+                    normalizedPosition = i / (float)(cardsInHand.Count - 1) * 2f - 1f;
+                }
+                
+                float totalWidth = (cardsInHand.Count - 1) * cardSpacing;
+                float xPosition = -totalWidth / 2f + i * cardSpacing;
+                float yPosition = Mathf.Abs(normalizedPosition) * arcSeverity;
+                float rotation = normalizedPosition * maxRotation * -1f;
+
+                RectTransform rT = cardsInHand[i].GetComponent<RectTransform>();
+                rT.anchoredPosition = new Vector2(xPosition, yPosition);
+                rT.localRotation = Quaternion.Euler(0, 0, rotation);
+            }
         }
         
-
     }
     
     
