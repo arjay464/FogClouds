@@ -12,9 +12,12 @@ public class CardDisplay : MonoBehaviour
 
     public CardData cardData;
 
-    public void SetCardData(CardData data)
+    public int instanceID;
+
+    public void SetCardData(CardData data, int id)
     {
         cardData = data;
+        instanceID = id; 
         UpdateDisplay();
     }
 

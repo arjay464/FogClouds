@@ -1,8 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using Mirror;
 
-public class ResourceManager : MonoBehaviour
+public class ResourceManager : NetworkBehaviour
 {
     [Header("Resource Amounts [Thessa]")]
     public int startingHP;
@@ -17,68 +18,56 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI drawCounter;
     public Dictionary<CardData.Cost, int> resourceDictionary;
     public Dictionary<CardData.Effect, int> outputDictionary;
-    private DeckManager deckManager;
-    private EffectManager effectManager;
-
 
 
     void Awake()
     {
-        resourceDictionary = new Dictionary<CardData.Cost, int>
-        {
-            {CardData.Cost.hp, startingHP},
-            {CardData.Cost.bloodVials, startingBloodVials}
-        };
 
-        outputDictionary = new Dictionary<CardData.Effect, int>
-        {
-            {CardData.Effect.attack, 0},
-            {CardData.Effect.draw, 0},
-            {CardData.Effect.shield, 0},
-        };
+            resourceDictionary = new Dictionary<CardData.Cost, int>
+            {
+                {CardData.Cost.hp, startingHP},
+                {CardData.Cost.bloodVials, startingBloodVials}
+            };
 
-        updateUICounters();
+            outputDictionary = new Dictionary<CardData.Effect, int>
+            {
+                {CardData.Effect.attack, 0},
+                {CardData.Effect.draw, 0},
+                {CardData.Effect.shield, 0},
+            };
+
     }
 
     void Start()
     {
-        deckManager = FindFirstObjectByType<DeckManager>();
-        effectManager = FindFirstObjectByType<EffectManager>();
-    }
+        if(isLocalPlayer){
 
-    public bool IsCardPlayable(GameObject cardObject)
-    {
-        CardDisplay display = cardObject.GetComponent<CardDisplay>();
+            hpCounter = GameObject.Find("HP").GetComponent<TextMeshProUGUI>();
+            bvCounter = GameObject.Find("Blood Vials").GetComponent<TextMeshProUGUI>();
+            attackCounter = GameObject.Find("Attack").GetComponent<TextMeshProUGUI>();
+            drawCounter = GameObject.Find("Draw").GetComponent<TextMeshProUGUI>();
 
-        CardData cardData = display.cardData;
-
-        Dictionary<CardData.Cost, int> costDictionary = cardData.GetCostDictionary();
-
-        foreach (var cost in costDictionary)
-        {
-            if (GetResource(cost.Key) < costDictionary[cost.Key])
-            {
-                return false;
-            }
+            updateUICounters();
         }
-        return true;
     }
 
-    public void PlayCard(GameObject cardObject)
+    public int GetResource(CardData.Cost type)
     {
-        CardDisplay display = cardObject.GetComponent<CardDisplay>();
+        return resourceDictionary.ContainsKey(type) ? resourceDictionary[type] : 0;
+    }
 
-        CardData cardData = display.cardData;
-
-        Dictionary<CardData.Cost, int> costDictionary = cardData.GetCostDictionary();
-
-        Dictionary<CardData.Effect, int> effectDictionary = cardData.GetEffectDictionary();
-
+    public void updateResources(Dictionary<CardData.Cost, int> costDictionary){
+        
         foreach (var cost in costDictionary)
         {
             resourceDictionary[cost.Key] -= cost.Value;
         }
 
+        updateUICounters();
+    }
+
+    public void updateOutputs(Dictionary<CardData.Effect, int> effectDictionary){
+        
         foreach (var effect in effectDictionary)
         {
             if (outputDictionary.ContainsKey(effect.Key))
@@ -86,20 +75,9 @@ public class ResourceManager : MonoBehaviour
                 outputDictionary[effect.Key] += effect.Value;
             }
 
-            effectManager.ExecuteEffect(effect.Key, effect.Value);
-
         }
 
-
-        deckManager.DiscardCard(cardObject);
-
         updateUICounters();
-        
-    }
-
-    public int GetResource(CardData.Cost type)
-    {
-        return resourceDictionary.ContainsKey(type) ? resourceDictionary[type] : 0;
     }
     
     void updateUICounters()

@@ -44,23 +44,15 @@ public class CardData : ScriptableObject
         gold,
 
     }
-
-
     public string cardName;
-
     public string description;
     public List<EffectEntry> effectList;
     public List<CostEntry> costList;
-
     public int priority;
-
     public bool usesStack;
-
     public CardPool cardPool;
-
     public Sprite cardArt;
-
-
+    
     public Dictionary<Effect, int> GetEffectDictionary()
     {
         Dictionary<Effect, int> dict = new Dictionary<Effect, int>();
@@ -79,5 +71,19 @@ public class CardData : ScriptableObject
             dict[entry.cost] = entry.value;
         }
         return dict;
+    }
+}
+
+public class CardInstance{
+    
+    public CardData cardData;
+    public int instanceID;
+
+    private static int nextID = 0;
+
+    public CardInstance(CardData cardData){
+        this.cardData = cardData;
+        this.instanceID = nextID;
+        nextID++;
     }
 }

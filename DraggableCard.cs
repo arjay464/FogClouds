@@ -44,8 +44,6 @@ public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     {
         canvas = GetComponentInParent<Canvas>();
         deckManager = FindFirstObjectByType<DeckManager>();
-        resourceManager = FindFirstObjectByType<ResourceManager>();
-
         originalScale = transform.localScale;
         
 
@@ -102,13 +100,7 @@ public class DraggableCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         if (!IsPointerOverHandContainer(eventData))
         {
-            if (deckManager != null)
-            {
-                if (resourceManager.IsCardPlayable(gameObject))
-                {
-                    resourceManager.PlayCard(gameObject);
-                }
-            }
+            deckManager.OnCardPlayed(gameObject);
         }
         else
         {

@@ -1,69 +1,115 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Mirror;
 
 
-public class DeckManager : MonoBehaviour
+public class DeckManager : NetworkBehaviour
 {
     [Header("Card Prefab")]
     public GameObject cardPrefab;
 
-    [Header("UI Containers")]
+    [Header("UI Containers (Set at runtime)")]
+
     public Transform drawPileTransform;
     public Transform discardPileTransform;
     public Transform handContainer;
 
     [Header("Card Data")]
+    
     public List<CardData> playerDeck = new List<CardData>();
 
     [Header("Input")]
+
     public InputActionAsset drawDiscardTest;
 
     [Header("Card Fan Settings")]
-    public float cardSpacing; 
+    public float cardSpacing;
     public float arcSeverity;
-    public float maxRotation; 
+    public float maxRotation;
     private InputAction drawAction;
-    private List<CardData> drawPile = new List<CardData>();
-    private List<CardData> discardPile = new List<CardData>();
+
+    //Server
+    
+    private List<CardInstance> drawPile = new List<CardInstance>();
+    private List<CardInstance> discardPile = new List<CardInstance>();
+    private List<CardInstance> serverCardsInHand = new List<CardInstance>();
+
+    //Client
     private List<GameObject> cardsInHand = new List<GameObject>();
 
+    //References
+
+    private ResourceManager resourceManager;
+    private EffectManager effectManager;
 
     void Awake()
     {
-        var gameplayMap = drawDiscardTest.FindActionMap("drawDiscardTest");
-        drawAction = gameplayMap.FindAction("Draw");
+        if(isLocalPlayer){
+
+            var gameplayMap = drawDiscardTest.FindActionMap("drawDiscardTest");
+            drawAction = gameplayMap.FindAction("Draw");
+            resourceManager = FindFirstObjectByType<ResourceManager>();
+            effectManager = FindFirstObjectByType<EffectManager>();
+
+        }
     }
 
     void OnEnable()
     {
-        drawAction.Enable();
-        drawAction.performed += OnDrawPerformed;
+        if(isLocalPlayer){
+
+            drawAction.Enable();
+            drawAction.performed += OnDrawPerformed;
+
+        }
+        
     }
-    
+
     void OnDisable()
     {
-        drawAction.performed -= OnDrawPerformed;
-        drawAction.Disable();
+        if(isLocalPlayer){
+
+            drawAction.performed -= OnDrawPerformed;
+            drawAction.Disable();
+
+        }
     }
+
     void Start()
     {
-        InitializeDeck();
+        if(isLocalPlayer){
+            
+            CmdInitializeDeck();
+            handContainer = GameObject.Find("HandContainer").transform;
+            drawPileTransform = GameObject.Find("DrawPile").transform;
+            discardPileTransform = GameObject.Find("DiscardPile").transform;
+
+        }    
     }
 
     private void OnDrawPerformed(InputAction.CallbackContext context)
     {
-        DrawCard();
+        if(!isLocalPlayer) return;
+            
+        CmdDrawCard();  
     }
 
-
-    void InitializeDeck()
+    [Command]
+    void CmdInitializeDeck()
     {
-        drawPile.AddRange(playerDeck);
+        foreach(CardData cardData in playerDeck){
+            
+            CardInstance instance = new CardInstance(cardData);
+            drawPile.Add(instance);
+
+        }
+        
         ShuffleDeck();
     }
 
-    public void DrawCard()
+    [Command]
+    public void CmdDrawCard()
     {
         if (drawPile.Count == 0)
         {
@@ -80,38 +126,63 @@ public class DeckManager : MonoBehaviour
 
         }
 
-        CardData drawnCard = drawPile[0];
+        CardInstance drawnCard = drawPile[0];
         drawPile.RemoveAt(0);
 
-        GameObject cardObject = Instantiate(cardPrefab, handContainer);
-        CardDisplay display = cardObject.GetComponent<CardDisplay>();
-        display.SetCardData(drawnCard);
-
-        cardsInHand.Add(cardObject);
-
-        RefreshHandLayout();
-
-        Debug.Log($"Drew {drawnCard.cardName}. {drawPile.Count} left in draw pile.");
-
+        TargetCardDraw(connectionToClient, drawnCard.cardData, drawnCard.instanceID);
     }
 
-    public void DiscardCard(GameObject cardObject)
+    [TargetRpc]
+    void TargetCardDraw(NetworkConnection target, CardData cardData, int instanceID)
     {
+        GameObject cardObject = Instantiate(cardPrefab, handContainer);
+        CardDisplay display = cardObject.GetComponent<CardDisplay>();
+        display.SetCardData(cardData, instanceID);
+        cardsInHand.Add(cardObject);
+        RefreshHandLayout();
+        Debug.Log($"Drew {cardData.cardName} (id = {instanceID}). {drawPile.Count} left in draw pile.");
+    }
+
+    
+    public void OnCardDiscarded(GameObject cardObject){
+        
+        if(!isLocalPlayer) return;
+
         CardDisplay display = cardObject.GetComponent<CardDisplay>();
 
-        if (display != null && display.cardData != null)
-        {
-            discardPile.Add(display.cardData);
-            Debug.Log($"Discarded {display.cardData.cardName}");
-        }
+        CmdDiscardCard(display.instanceID);
+
+    }
+    
+    [Command]
+    public void CmdDiscardCard(int instanceID)
+    {
+        
+        CardInstance instance = serverCardsInHand.Find(c => c.instanceID == instanceID);
+
+        if(instance == null) return;
+
+        serverCardsInHand.Remove(instance);
+
+        discardPile.Add(instance);
+
+        TargetDiscardCard(connectionToClient, instance.instanceID);
+    }
+
+    [TargetRpc]
+    void TargetDiscardCard(NetworkConnection target, int instanceID)
+    {
+        GameObject cardObject = cardsInHand.Find(obj => obj.GetComponent<CardDisplay>().instanceID == instanceID);
+
+        if(cardObject == null) return;
 
         cardsInHand.Remove(cardObject);
-
         Destroy(cardObject);
 
         RefreshHandLayout();
     }
 
+    [Server]
     void ShuffleDeck()
     {
         //Fisher-Yates shuffle is a w algorithm -Arjay
@@ -119,12 +190,13 @@ public class DeckManager : MonoBehaviour
         for (int i = drawPile.Count - 1; i > 0; i--)
         {
             int randomIndex = Random.Range(0, i + 1);
-            CardData temp = drawPile[i];
+            CardInstance temp = drawPile[i];
             drawPile[i] = drawPile[randomIndex];
             drawPile[randomIndex] = temp;
         }
     }
 
+    [Client]
     public void RefreshHandLayout()
     {
         if (cardsInHand.Count == 0)
@@ -146,7 +218,7 @@ public class DeckManager : MonoBehaviour
                 {
                     normalizedPosition = i / (float)(cardsInHand.Count - 1) * 2f - 1f;
                 }
-                
+
                 float totalWidth = (cardsInHand.Count - 1) * cardSpacing;
                 float xPosition = -totalWidth / 2f + i * cardSpacing;
                 float yPosition = Mathf.Abs(normalizedPosition) * arcSeverity;
@@ -157,8 +229,72 @@ public class DeckManager : MonoBehaviour
                 rT.localRotation = Quaternion.Euler(0, 0, rotation);
             }
         }
+
+    }    
+
+    public void OnTurnEnd()
+    {       
+        if(!isLocalPlayer) return;
+        
+        while(cardsInHand.Count > 0)
+        {
+            OnCardDiscarded(cardsInHand[0]);
+        }
+    }
+
+    public void OnCardPlayed(GameObject cardObject){
+
+        if(!isLocalPlayer) return;
+
+        CardInstance instance = cardObject.GetComponent<CardInstance>();
+
+        CmdPlayCard(instance.instanceID); 
+    }
+
+    [Command]
+    public void CmdPlayCard(int instanceID)
+    {
+        CardInstance instance = serverCardsInHand.Find(c => c.instanceID == instanceID);
+
+        if(instance == null) return;
+
+        Dictionary<CardData.Cost, int> costDictionary = instance.cardData.GetCostDictionary();
+
+        Dictionary<CardData.Effect, int> effectDictionary = instance.cardData.GetEffectDictionary();
+
+        if(!IsCardPlayable(instance, costDictionary)) return;
+
+
+        TargetPlayCard(connectionToClient, instanceID);
         
     }
-    
+
+    [TargetRpc]
+    public void TargetPlayCard(NetworkConnection target, int instanceID){
+
+        GameObject cardObject = cardsInHand.Find(obj => obj.GetComponent<CardInstance>().instanceID == instanceID);
+
+        CardInstance instance = cardObject.GetComponent<CardInstance>();
+
+        Dictionary<CardData.Effect, int> effectDictionary = instance.cardData.GetEffectDictionary();
+
+        resourceManager.updateOutputs(effectDictionary); 
+
+        OnCardDiscarded(cardObject);
+
+    }
+
+
+    [Server]
+    public bool IsCardPlayable(CardInstance instance, Dictionary<CardData.Cost, int> costDictionary)
+    {
+        CardData cardData = instance.cardData;
+
+        foreach (var cost in costDictionary)
+        {
+            if (resourceManager.GetResource(cost.Key) < costDictionary[cost.Key]) return false;
+        }
+        return true;
+    }
     
 }
