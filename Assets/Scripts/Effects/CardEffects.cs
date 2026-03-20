@@ -35,10 +35,10 @@ namespace FogClouds
 
             // Store pre-shield damage for lifesteal calculation
             int preShieldDamage = damage;
+            int shieldBefore = defender.Shield;  // capture before mutation
             defender.TakeDamage(damage);
 
-            // Actual HP damage is what made it past the shield
-            int actualDamage = Math.Max(0, preShieldDamage - defender.Shield);
+            int actualDamage = Math.Max(0, preShieldDamage - shieldBefore);  // use captured value
 
             if (Lifesteal)
             {

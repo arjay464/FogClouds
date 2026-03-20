@@ -102,6 +102,10 @@ namespace FogClouds
 
         // Null if InsightTreeOpponent flag is false.
         public InsightTreeState InsightTree;
+
+        public bool UpgradeChoiceSubmitted;
+        public bool PowerCategoryCommitted;
+        public bool StrategyCategoryCommitted;
     }
 
     // A queue entry as seen by a client.
@@ -160,7 +164,10 @@ namespace FogClouds
                 PastUpgrades = null,
                 FutureOffers = viewer.UpcomingOffers,
                 InsightTree = viewer.InsightTree,
-                Silver = viewer.Silver
+                Silver = viewer.Silver,
+                UpgradeChoiceSubmitted = viewer.UpgradeChoiceSubmitted,
+                PowerCategoryCommitted = viewer.PowerCategoryCommitted,
+                StrategyCategoryCommitted = viewer.StrategyCategoryCommitted
             };
         }
 
@@ -209,6 +216,9 @@ namespace FogClouds
                 InsightTree = fog.InsightTreeOpponent ? GetOpponentInsightTree(viewer) : null,
                 // Silver is not a revealable field — always hidden for opponent
                 Silver = -1,
+                UpgradeChoiceSubmitted = false,
+                PowerCategoryCommitted = false,
+                StrategyCategoryCommitted = false
 
             };
         }
@@ -235,6 +245,7 @@ namespace FogClouds
                 FutureOffers = null,
                 InsightTree = null,
                 Silver = -1,
+                UpgradeChoiceSubmitted = false
             };
         }
 

@@ -125,6 +125,7 @@ public class GameManager : NetworkBehaviour
     private void EnterTurnStart()
     {
         CurrentPhase = TurnPhase.TurnStart;
+        _gameState.CurrentPhase = TurnPhase.TurnStart;
         Debug.Log($"[GameManager] Phase: TurnStart (Turn {_gameState.TurnNumber})");
 
         var p0 = _gameState.GetPlayer(0);
@@ -148,6 +149,7 @@ public class GameManager : NetworkBehaviour
     private void EnterMainPhase()
     {
         CurrentPhase = TurnPhase.MainPhase;
+        _gameState.CurrentPhase = TurnPhase.MainPhase;
         _endTurnVotes = 0;
         Debug.Log("[GameManager] Phase: MainPhase — timer started.");
 
@@ -159,9 +161,11 @@ public class GameManager : NetworkBehaviour
     private void EnterQueueMerge()
     {
         CurrentPhase = TurnPhase.QueueMerge;
+        _gameState.CurrentPhase = TurnPhase.QueueMerge;
         Debug.Log("[GameManager] Phase: QueueMerge.");
 
         _gameState.MergeQueues();
+        StateRelay.Instance.BroadcastToAll();
         AdvancePhase();
     }
 
@@ -169,8 +173,10 @@ public class GameManager : NetworkBehaviour
     private void EnterQueueResolution()
     {
         CurrentPhase = TurnPhase.QueueResolution;
+        _gameState.CurrentPhase = TurnPhase.QueueResolution;
         Debug.Log($"[GameManager] Phase: QueueResolution — resolving {_gameState.MergedQueue.Count} cards.");
 
+        StateRelay.Instance.BroadcastToAll();
         StartCoroutine(ResolveQueue());
     }
 
@@ -178,6 +184,7 @@ public class GameManager : NetworkBehaviour
     private void EnterRoguelikePhase()
     {
         CurrentPhase = TurnPhase.RoguelikePhase;
+        _gameState.CurrentPhase = TurnPhase.RoguelikePhase;
         _roguelikeVotes = 0;
         Debug.Log("[GameManager] Phase: RoguelikePhase — generating offers.");
 
@@ -191,6 +198,7 @@ public class GameManager : NetworkBehaviour
     private void EnterShopPhase()
     {
         CurrentPhase = TurnPhase.ShopPhase;
+        _gameState.CurrentPhase = TurnPhase.ShopPhase;
         Debug.Log("[GameManager] Phase: ShopPhase — generating offers.");
 
         _gameState.Player0ShopOffer = GenerateShopOffer(_gameState.GetPlayer(0));
@@ -204,6 +212,7 @@ public class GameManager : NetworkBehaviour
     private void EnterAuctionPhase()
     {
         CurrentPhase = TurnPhase.AuctionPhase;
+        _gameState.CurrentPhase = TurnPhase.AuctionPhase;
         Debug.Log("[GameManager] Phase: AuctionPhase — generating cards.");
 
         _gameState.AuctionOffer.Reset();
@@ -219,6 +228,7 @@ public class GameManager : NetworkBehaviour
     private void EnterEventPhase()
     {
         CurrentPhase = TurnPhase.EventPhase;
+        _gameState.CurrentPhase = TurnPhase.EventPhase;
         _gameState.PlayerEventChoices = new string[2];
 
         if (_eventPool == null || _eventPool.EventPool == null || _eventPool.EventPool.Length == 0)
@@ -262,6 +272,7 @@ public class GameManager : NetworkBehaviour
     private void EnterTurnEnd()
     {
         CurrentPhase = TurnPhase.TurnEnd;
+        _gameState.CurrentPhase = TurnPhase.TurnEnd;
         Debug.Log("[GameManager] Phase: TurnEnd.");
 
         _gameState.TurnNumber++;
@@ -357,7 +368,10 @@ public class GameManager : NetworkBehaviour
         player.Discard.Add(card);
         _gameState.EnqueueCard(playerId, card);
 
+        StateRelay.Instance.BroadcastToAll();
+
         Debug.Log($"[GameManager] Player {playerId} queued {card} (upcast: {upcast}). Queue size: {_gameState.GetQueue(playerId).Count}");
+
     }
 
     [Server]
@@ -380,6 +394,10 @@ public class GameManager : NetworkBehaviour
     {
         while (_gameState.MergedQueue.Count > 0)
         {
+            // Broadcast with current card still at [0] — client sees it highlighted as "resolving"
+            StateRelay.Instance.BroadcastToAll();
+            yield return new WaitForSeconds(1.2f); // pause so player sees which card is resolving
+
             var entry = _gameState.MergedQueue[0];
             _gameState.MergedQueue.RemoveAt(0);
 
@@ -388,9 +406,8 @@ public class GameManager : NetworkBehaviour
             var effect = CardEffectRegistry.Instance.GetEffect(entry.Card.EffectId);
             effect?.Apply(entry, _gameState);
 
-            StateRelay.Instance.BroadcastToAll();
-
-            yield return null; // flush this frame's RPCs before next card
+            StateRelay.Instance.BroadcastToAll(); // broadcast post-effect (HP changes, etc.)
+            yield return new WaitForSeconds(0.8f); // brief pause after effect before next card
         }
 
         Debug.Log("[GameManager] Queue resolution complete.");
@@ -926,6 +943,50 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"[GameManager] Player {playerId} chose Strategy card: {cardId}");
 
         HandleSubmitRoguelikeChoice(agent);
+    }
+
+    [Server]
+    public void HandleCommitPower(PlayerNetworkAgent agent)
+    {
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        if (CurrentPhase != TurnPhase.RoguelikePhase)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} tried to commit Power outside RoguelikePhase.");
+            return;
+        }
+        if (player.UpgradeChoiceSubmitted || player.PowerCategoryCommitted || player.StrategyCategoryCommitted)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} already committed.");
+            return;
+        }
+
+        player.PowerCategoryCommitted = true;
+        Debug.Log($"[GameManager] Player {playerId} committed to Power.");
+        StateRelay.Instance.BroadcastToAll();
+    }
+
+    [Server]
+    public void HandleCommitStrategy(PlayerNetworkAgent agent)
+    {
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        if (CurrentPhase != TurnPhase.RoguelikePhase)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} tried to commit Strategy outside RoguelikePhase.");
+            return;
+        }
+        if (player.UpgradeChoiceSubmitted || player.PowerCategoryCommitted || player.StrategyCategoryCommitted)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} already committed.");
+            return;
+        }
+
+        player.StrategyCategoryCommitted = true;
+        Debug.Log($"[GameManager] Player {playerId} committed to Strategy.");
+        StateRelay.Instance.BroadcastToAll();
     }
 
     [Server]

@@ -70,6 +70,9 @@ namespace FogClouds
         //Set to true when this player has submitted their roguelike upgrade choice.
         public bool UpgradeChoiceSubmitted;
 
+        public bool PowerCategoryCommitted;
+        public bool StrategyCategoryCommitted;
+
         //Snapshot
         // Frozen copy of the OPPONENT's state, taken at the TurnStart → MainPhase transition.
         // The fog filter reads exclusively from this. Never from the opponent's live PlayerState.
@@ -102,6 +105,8 @@ namespace FogClouds
 
             ReadyToEndTurn = false;
             UpgradeChoiceSubmitted = false;
+            PowerCategoryCommitted = false;
+            StrategyCategoryCommitted = false;
             TurnStartSnapshot = null; // set at first MainPhase begin
         }
 
@@ -113,6 +118,8 @@ namespace FogClouds
             if (!ShieldCarriesOver) Shield = 0;
             ReadyToEndTurn = false;
             UpgradeChoiceSubmitted = false;
+            PowerCategoryCommitted = false;
+            StrategyCategoryCommitted = false;
         }
 
         // Returns true if this player is alive.

@@ -1,0 +1,26 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="CardView.uss"/>
+    <ui:VisualElement name="card-root" class="card-root">
+
+        <!-- TOP ROW: Name + Cost -->
+        <ui:VisualElement name="card-header" class="card-header">
+            <ui:Label name="card-name" text="Card Name" class="card-name"/>
+            <ui:VisualElement name="card-cost" class="card-cost">
+                <ui:VisualElement name="dagger-pips" class="dagger-pips"/>
+                <ui:Label name="blood-cost" text="" class="blood-cost"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- MIDDLE: Type shape area -->
+        <ui:VisualElement name="card-art" class="card-art">
+            <ui:VisualElement name="type-shape" class="type-shape"/>
+        </ui:VisualElement>
+
+        <!-- BOTTOM: Speed (Queueable only) + Flavour -->
+        <ui:VisualElement name="card-footer" class="card-footer">
+            <ui:Label name="speed-label" text="" class="speed-label"/>
+            <ui:Label name="flavour-text" text="" class="flavour-text"/>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

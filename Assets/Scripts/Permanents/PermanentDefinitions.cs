@@ -94,7 +94,7 @@ namespace FogClouds
         public int ModifyDamage(int damage, bool isAttacker)
         {
             if (isAttacker) return damage;
-            return Mathf.CeilToInt(damage * (1f - ReductionPercent));
+            return Mathf.FloorToInt(damage * (1f - ReductionPercent));
         }
 
         public override BoardPermanent Clone()

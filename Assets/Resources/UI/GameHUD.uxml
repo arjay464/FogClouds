@@ -1,0 +1,102 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="GameHUD.uss"/>
+    <ui:VisualElement name="root" style="width: 100%; height: 100%; position: absolute;">
+
+        <!-- TOP BAR: Phase and Turn -->
+        <ui:VisualElement name="top-bar" class="top-bar">
+            <ui:Label name="phase-label" text="MainPhase" class="phase-label"/>
+            <ui:Label name="turn-label" text="Turn 1" class="turn-label"/>
+        </ui:VisualElement>
+
+        <!-- BOARD STATE AREA -->
+        <ui:VisualElement name="board-area" class="board-area">
+            <ui:VisualElement name="opponent-board" class="board-zone">
+                <ui:Label name="opponent-board-count" text="" class="board-count-badge"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="own-board" class="board-zone">
+                <ui:Label name="own-board-count" text="" class="board-count-badge"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- QUEUE AREA: right side during MainPhase -->
+        <ui:VisualElement name="queue-area" class="queue-area">
+            <ui:VisualElement name="own-queue" class="queue-panel"/>
+            <ui:VisualElement name="merged-queue" class="queue-panel merged-queue" style="display: none;"/>
+        </ui:VisualElement>
+
+        <!-- HAND AREA: above passives shelf -->
+        <ui:VisualElement name="hand-area" class="hand-area"/>
+
+        <!-- PASSIVES SHELF: thin horizontal strip under hand -->
+        <ui:VisualElement name="passives-shelf" class="passives-shelf"/>
+
+        <!-- BOTTOM BAR -->
+        <ui:VisualElement name="bottom-bar" class="bottom-bar">
+
+            <!-- FAR LEFT: Draw Pile -->
+            <ui:VisualElement name="draw-pile" class="pile">
+                <ui:Label name="draw-count" text="12" class="pile-count"/>
+                <ui:Label text="DECK" class="pile-label"/>
+            </ui:VisualElement>
+
+            <!-- CHARACTER BLOCK: portrait + vitals stacked -->
+            <ui:VisualElement name="character-block" class="character-block">
+                <ui:VisualElement name="character-portrait" class="portrait"/>
+                <ui:VisualElement name="vitals-block" class="vitals-block">
+
+                    <!-- Resource bar sits above HP bar -->
+                    <ui:VisualElement name="resource-bar" class="resource-bar">
+                        <ui:VisualElement name="per-turn-pips" class="pip-row"/>
+                        <ui:Label name="persistent-value" text="0" class="persistent-value"/>
+                        <ui:Label name="silver-label" text="0" class="currency-label"/>
+                        <ui:Label name="sight-label" text="0" class="currency-label"/>
+                    </ui:VisualElement>
+
+                    <!-- HP bar with shield alongside -->
+                    <ui:VisualElement name="hp-row" class="hp-row">
+                        <ui:VisualElement name="hp-bar-container" class="bar-container">
+                            <ui:VisualElement name="hp-bar-fill" class="bar-fill hp-fill"/>
+                            <ui:Label name="hp-label" text="" class="bar-label"/>
+                        </ui:VisualElement>
+                        <ui:Label name="shield-label" text="" class="shield-label"/>
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- DISCARD PILE -->
+            <ui:VisualElement name="discard-pile" class="pile">
+                <ui:Label name="discard-count" text="0" class="pile-count"/>
+                <ui:Label text="DISC" class="pile-label"/>
+            </ui:VisualElement>
+
+            <!-- ACTION BUTTONS: end turn + special passives -->
+            <ui:VisualElement name="action-buttons" class="action-buttons">
+                <ui:Button name="insight-button" text="INSIGHT" class="action-btn"/>
+                <ui:Button name="passive-button" text="PASSIVE" class="action-btn" style="display: none;"/>
+                <ui:Button name="end-turn-button" text="End Turn" class="end-turn-btn"/>
+            </ui:VisualElement>
+            <!-- ROGUELIKE PHASE PANEL -->
+            <ui:VisualElement name="roguelike-panel" class="roguelike-panel" style="display: none;">
+                <ui:VisualElement name="roguelike-panel-inner" class="roguelike-panel-inner">
+                    <ui:Label name="roguelike-title" text="CHOOSE YOUR PATH" class="roguelike-title"/>
+                    
+                    <!-- Category selection — shown first -->
+                    <ui:VisualElement name="category-buttons" class="category-buttons">
+                        <ui:Button name="power-btn" text="POWER" class="roguelike-category-btn roguelike-power-btn"/>
+                        <ui:Button name="strategy-btn" text="STRATEGY" class="roguelike-category-btn roguelike-strategy-btn"/>
+                        <ui:Button name="insight-btn-roguelike" text="INSIGHT  +1 Sight" class="roguelike-category-btn roguelike-insight-btn"/>
+                    </ui:VisualElement>
+
+                    <!-- Card offers — shown after committing to Power or Strategy -->
+                    <ui:VisualElement name="card-offer-buttons" class="card-offer-buttons" style="display: none;"/>
+
+                    <!-- Waiting message — shown after choice submitted -->
+                    <ui:Label name="roguelike-waiting" text="Waiting for opponent..." class="roguelike-waiting" style="display: none;"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

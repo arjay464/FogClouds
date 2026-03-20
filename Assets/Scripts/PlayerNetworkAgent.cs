@@ -160,4 +160,21 @@ public class PlayerNetworkAgent : NetworkBehaviour
     {
         GameManager.Instance.HandleEventChoice(this, choice);
     }
+
+    [Command]
+    public void CmdQueueCardById(int cardInstanceId, bool upcast)
+    {
+        GameManager.Instance.HandleQueueCard(this, cardInstanceId, upcast);
+    }
+    [Command]
+    public void CmdCommitPower()
+    {
+        GameManager.Instance.HandleCommitPower(this);
+    }
+
+    [Command]
+    public void CmdCommitStrategy()
+    {
+        GameManager.Instance.HandleCommitStrategy(this);
+    }
 }
