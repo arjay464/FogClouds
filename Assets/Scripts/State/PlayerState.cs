@@ -72,6 +72,20 @@ namespace FogClouds
 
         public bool PowerCategoryCommitted;
         public bool StrategyCategoryCommitted;
+        public bool InsightCategoryCommitted;
+
+        // Tracks blood spent this turn for Hemorrhage calculation. Reset at TurnStart.
+        public int BloodSpentThisTurn;
+
+        // Tracks daggers spent this turn for Daggers in the Dark calculation. Reset at TurnStart.
+        public int DaggersSpentThisTurn;
+
+        // Mirror of Moonlight state. Copies instants into the queue at speed 2.
+        public bool MirrorActive;
+        public int MirrorTurnsRemaining;
+
+        // Cards temporarily exiled by Banishment. Returned to deck after TurnsRemaining hits 0.
+        public List<ExiledCard> ExiledCards;
 
         //Snapshot
         // Frozen copy of the OPPONENT's state, taken at the TurnStart → MainPhase transition.
@@ -106,8 +120,17 @@ namespace FogClouds
             ReadyToEndTurn = false;
             UpgradeChoiceSubmitted = false;
             PowerCategoryCommitted = false;
+            InsightCategoryCommitted = false;
             StrategyCategoryCommitted = false;
-            TurnStartSnapshot = null; // set at first MainPhase begin
+            TurnStartSnapshot = null;
+
+            BloodSpentThisTurn = 0;
+            DaggersSpentThisTurn = 0;
+            MirrorActive = false;
+            MirrorTurnsRemaining = 0;
+            ExiledCards = new List<ExiledCard>();
+
+            // set at first MainPhase begin
         }
 
         //Helpers - only functions that require no external context should live here.
@@ -119,7 +142,30 @@ namespace FogClouds
             ReadyToEndTurn = false;
             UpgradeChoiceSubmitted = false;
             PowerCategoryCommitted = false;
+            InsightCategoryCommitted = false;
             StrategyCategoryCommitted = false;
+
+            BloodSpentThisTurn = 0;
+            DaggersSpentThisTurn = 0;
+
+            // Tick mirror duration
+            if (MirrorActive)
+            {
+                MirrorTurnsRemaining--;
+                if (MirrorTurnsRemaining <= 0)
+                    MirrorActive = false;
+            }
+
+            // Tick exiled cards and return expired ones to deck
+            for (int i = ExiledCards.Count - 1; i >= 0; i--)
+            {
+                ExiledCards[i].TurnsRemaining--;
+                if (ExiledCards[i].TurnsRemaining <= 0)
+                {
+                    Deck.Add(ExiledCards[i].Card);
+                    ExiledCards.RemoveAt(i);
+                }
+            }
         }
 
         // Returns true if this player is alive.

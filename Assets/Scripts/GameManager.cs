@@ -76,8 +76,8 @@ public class GameManager : NetworkBehaviour
         BuildStartingDeck(_gameState.GetPlayer(0));
         BuildStartingDeck(_gameState.GetPlayer(1));
 
-        _gameState.GetPlayer(0).DrawCards(3, _gameState.Rng);
-        _gameState.GetPlayer(1).DrawCards(3, _gameState.Rng);
+        _gameState.GetPlayer(0).DrawCards(5, _gameState.Rng);
+        _gameState.GetPlayer(1).DrawCards(5, _gameState.Rng);
 
         AdvancePhase();
     }
@@ -134,13 +134,24 @@ public class GameManager : NetworkBehaviour
         p0.OnTurnStart();
         p1.OnTurnStart();
 
+        //Apply status effects
+        ApplyTurnStartStatusEffects(_gameState.GetPlayer(0));
+        ApplyTurnStartStatusEffects(_gameState.GetPlayer(1));
+
+        //Apply passive effects
+        ApplyPassiveTurnStart(_gameState.GetPlayer(0));
+        ApplyPassiveTurnStart(_gameState.GetPlayer(1));
+
         // Tick permanents and remove expired ones
         TickPermanents(p0);
         TickPermanents(p1);
 
         // Draw cards
-        p0.DrawCards(3, _gameState.Rng);
-        p1.DrawCards(3, _gameState.Rng);
+        p0.DrawCards(5, _gameState.Rng);
+        p1.DrawCards(5, _gameState.Rng);
+
+        AwardSilver(p0, 5, "turn start");
+        AwardSilver(p1, 5, "turn start");
 
         AdvancePhase();
     }
@@ -163,7 +174,6 @@ public class GameManager : NetworkBehaviour
         CurrentPhase = TurnPhase.QueueMerge;
         _gameState.CurrentPhase = TurnPhase.QueueMerge;
         Debug.Log("[GameManager] Phase: QueueMerge.");
-
         _gameState.MergeQueues();
         StateRelay.Instance.BroadcastToAll();
         AdvancePhase();
@@ -175,7 +185,6 @@ public class GameManager : NetworkBehaviour
         CurrentPhase = TurnPhase.QueueResolution;
         _gameState.CurrentPhase = TurnPhase.QueueResolution;
         Debug.Log($"[GameManager] Phase: QueueResolution — resolving {_gameState.MergedQueue.Count} cards.");
-
         StateRelay.Instance.BroadcastToAll();
         StartCoroutine(ResolveQueue());
     }
@@ -218,8 +227,13 @@ public class GameManager : NetworkBehaviour
         _gameState.AuctionOffer.Reset();
 
         var auctionPicks = PickRandom(_cardPool.Auction, 3);
+
         foreach (var card in auctionPicks)
+        {
             _gameState.AuctionOffer.CardIds.Add(card.CardId);
+            _gameState.AuctionOffer.CardDisplayNames.Add(card.DisplayName);
+        }
+
 
         StateRelay.Instance.BroadcastToAll();
     }
@@ -263,7 +277,9 @@ public class GameManager : NetworkBehaviour
         }
         else
         {
-            // Await player choices
+            // Call Apply for interactive events that need server-side setup before players choose
+            // (e.g. Writing on the Wall needs to populate EventRevealedCards before broadcasting)
+            effect.Apply(_gameState);
             StateRelay.Instance.BroadcastToAll();
         }
     }
@@ -274,6 +290,14 @@ public class GameManager : NetworkBehaviour
         CurrentPhase = TurnPhase.TurnEnd;
         _gameState.CurrentPhase = TurnPhase.TurnEnd;
         Debug.Log("[GameManager] Phase: TurnEnd.");
+
+        var p0 = _gameState.GetPlayer(0);
+        var p1 = _gameState.GetPlayer(1);
+        p0.Discard.AddRange(p0.Hand);
+        p0.Hand.Clear();
+        p1.Discard.AddRange(p1.Hand);
+        p1.Hand.Clear();
+        Debug.Log("[GameManager] Both players discarded their hands.");
 
         _gameState.TurnNumber++;
         _gameState.CheckWinCondition();
@@ -321,6 +345,12 @@ public class GameManager : NetworkBehaviour
     [Server]
     public void HandleQueueCard(PlayerNetworkAgent agent, int cardInstanceId, bool upcast = false)
     {
+        if (CurrentPhase != TurnPhase.MainPhase)
+        {
+            Debug.LogWarning($"[GameManager] HandleQueueCard called outside MainPhase — ignored.");
+            return;
+        }
+
         int playerId = _registeredPlayers.IndexOf(agent);
         var player = _gameState.GetPlayer(playerId);
 
@@ -346,6 +376,12 @@ public class GameManager : NetworkBehaviour
         string effectId = card.EffectId;
         if (upcast)
         {
+            if (!card.IsAttack)
+            {
+                Debug.LogWarning($"[GameManager] Player {playerId} tried to upcast non-attack card {card}.");
+                return;
+            }
+
             if (player.Resources.PerTurnResource < 1)
             {
                 Debug.LogWarning($"[GameManager] Player {playerId} tried to upcast but has no Daggers.");
@@ -359,6 +395,7 @@ public class GameManager : NetworkBehaviour
                 return;
             }
 
+            card.WasUpcast = true;
             player.Resources.PerTurnResource -= 1;
             effectId = upcastId;
         }
@@ -366,7 +403,10 @@ public class GameManager : NetworkBehaviour
         DeductCost(player, card.Cost);
         player.Hand.Remove(card);
         player.Discard.Add(card);
+
         _gameState.EnqueueCard(playerId, card);
+
+        AwardSilver(player, 2, "card queued");
 
         StateRelay.Instance.BroadcastToAll();
 
@@ -394,9 +434,9 @@ public class GameManager : NetworkBehaviour
     {
         while (_gameState.MergedQueue.Count > 0)
         {
-            // Broadcast with current card still at [0] — client sees it highlighted as "resolving"
+            // Broadcast first so client sees the current card highlighted
             StateRelay.Instance.BroadcastToAll();
-            yield return new WaitForSeconds(1.2f); // pause so player sees which card is resolving
+            yield return new WaitForSeconds(1.2f);
 
             var entry = _gameState.MergedQueue[0];
             _gameState.MergedQueue.RemoveAt(0);
@@ -406,8 +446,19 @@ public class GameManager : NetworkBehaviour
             var effect = CardEffectRegistry.Instance.GetEffect(entry.Card.EffectId);
             effect?.Apply(entry, _gameState);
 
-            StateRelay.Instance.BroadcastToAll(); // broadcast post-effect (HP changes, etc.)
-            yield return new WaitForSeconds(0.8f); // brief pause after effect before next card
+            // Totem of Progress — draw 1 if card was upcast
+            if (entry.Card.WasUpcast)
+            {
+                var caster = _gameState.GetPlayer(entry.OwnerId);
+                if (caster.Board.Any(p => p.PermanentId == "totem_of_progress"))
+                {
+                    caster.DrawCards(1, _gameState.Rng);
+                    Debug.Log($"[GameManager] Totem of Progress triggered — Player {entry.OwnerId} drew 1 card.");
+                }
+            }
+
+            StateRelay.Instance.BroadcastToAll();
+            yield return new WaitForSeconds(0.8f);
         }
 
         Debug.Log("[GameManager] Queue resolution complete.");
@@ -419,14 +470,11 @@ public class GameManager : NetworkBehaviour
     {
         var deckList = new List<(string cardId, int copies)>
         {
-            ("KnifeStrikeBase",  3),
-            ("Cultellara",       2),
-            ("Brace",            2),
+            ("KnifeStrikeBase",  4),
+            ("Cultellara",       1),
+            ("Brace",            4),
             ("ChaChaCard",       1),
-            ("CursedGobletCard", 1),
-            ("Ferravallum",      1),
             ("Cultivita",        1),
-            ("TwinSlashBase",    1),
         };
 
         int instanceId = player.PlayerId * 100;
@@ -453,6 +501,7 @@ public class GameManager : NetworkBehaviour
         for (int i = player.Board.Count - 1; i >= 0; i--)
         {
             var permanent = player.Board[i];
+            permanent.OnTurnStart(); // clear ProtectedThisTurn, any other per-turn resets
             if (permanent.TurnsRemaining == -1) continue;
             permanent.TurnsRemaining--;
             if (permanent.TurnsRemaining <= 0)
@@ -501,6 +550,16 @@ public class GameManager : NetworkBehaviour
         var effect = CardEffectRegistry.Instance.GetEffect(card.EffectId);
         effect?.Apply(new QueueEntry(playerId, card, 0), _gameState);
 
+        // Mirror of Moonlight — queue a copy of this instant at speed 2
+        if (player.MirrorActive)
+        {
+            var mirrorEntry = new QueueEntry(playerId, card, 2);
+            _gameState.GetQueue(playerId).Add(mirrorEntry);
+            Debug.Log($"[GameManager] Mirror copied {card} into queue at speed 2.");
+        }
+
+        AwardSilver(player, 2, "instant played");
+
         StateRelay.Instance.BroadcastToAll();
         Debug.Log($"[GameManager] Player {playerId} played instant {card}.");
     }
@@ -543,6 +602,8 @@ public class GameManager : NetworkBehaviour
         var effect = CardEffectRegistry.Instance.GetEffect(card.EffectId);
         effect?.Apply(new QueueEntry(playerId, card, 0), _gameState);
 
+        AwardSilver(player, 2, "permanent played");
+
         StateRelay.Instance.BroadcastToAll();
         Debug.Log($"[GameManager] Player {playerId} played permanent {card}.");
     }
@@ -575,8 +636,23 @@ public class GameManager : NetworkBehaviour
     private void DeductCost(PlayerState player, ResourceCost cost)
     {
         player.Resources.PerTurnResource -= cost.Daggers;
-        player.TakeDamage(cost.Blood);
-        Debug.Log($"[GameManager] Player {player.PlayerId} paid {cost.Daggers} Daggers, {cost.Blood} Blood.");
+        player.DaggersSpentThisTurn += cost.Daggers;
+
+        // Totem of Sacrifice reduces blood costs by 1 per stack, minimum 1
+        int bloodCost = cost.Blood;
+        if (bloodCost > 0)
+        {
+            int reduction = 0;
+            foreach (var permanent in player.Board)
+                if (permanent.PermanentId == "totem_of_sacrifice")
+                    reduction++;
+            bloodCost = Mathf.Max(1, bloodCost - reduction);
+        }
+
+        player.HP -= bloodCost;
+        player.HP = Mathf.Max(player.HP, 0);
+        player.BloodSpentThisTurn += bloodCost;
+        Debug.Log($"[GameManager] Player {player.PlayerId} paid {cost.Daggers} Daggers, {bloodCost} Blood.");
     }
 
     [Server]
@@ -725,11 +801,17 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
-        HandleGrantSight(agent);
-        StateRelay.Instance.BroadcastToAll();
-        Debug.Log($"[GameManager] Player {playerId} chose INSIGHT. Sight: {player.InsightTree.SightBanked}");
-    }
+        if (player.UpgradeChoiceSubmitted || player.InsightCategoryCommitted)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} already committed to INSIGHT.");
+            return;
+        }
 
+        player.InsightCategoryCommitted = true;
+        HandleGrantSight(agent);
+        Debug.Log($"[GameManager] Player {playerId} committed to INSIGHT. Sight: {player.InsightTree.SightBanked}");
+        StateRelay.Instance.BroadcastToAll();
+    }
     [Server]
     public void HandleSubmitRoguelikeChoice(PlayerNetworkAgent agent)
     {
@@ -852,12 +934,14 @@ public class GameManager : NetworkBehaviour
         foreach (var card in powerPicks)
         {
             offers.PowerOffers.Add(card.CardId);
+            offers.PowerDisplayNames.Add(card.DisplayName);
             offers.PowerPrices.Add(ShopPricing.Roll(_gameState.Rng, ShopPricing.PowerCard));
         }
 
         foreach (var card in strategyPicks)
         {
             offers.StrategyOffers.Add(card.CardId);
+            offers.StrategyDisplayNames.Add(card.DisplayName);
             offers.StrategyPrices.Add(ShopPricing.Roll(_gameState.Rng, ShopPricing.StrategyCard));
         }
     }
@@ -911,6 +995,7 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"[GameManager] Player {playerId} chose Power card: {cardId}");
 
         HandleSubmitRoguelikeChoice(agent);
+        StateRelay.Instance.BroadcastToAll();
     }
 
     [Server]
@@ -943,6 +1028,7 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"[GameManager] Player {playerId} chose Strategy card: {cardId}");
 
         HandleSubmitRoguelikeChoice(agent);
+        StateRelay.Instance.BroadcastToAll();
     }
 
     [Server]
@@ -992,7 +1078,7 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void AddCardToDeck(PlayerState player, string cardId)
     {
-        var definition = Resources.Load<CardDefinition>($"Cards/{cardId}");
+        var definition = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
         if (definition == null)
         {
             Debug.LogWarning($"[GameManager] Could not load CardDefinition for: {cardId}");
@@ -1000,9 +1086,21 @@ public class GameManager : NetworkBehaviour
         }
 
         int instanceId = player.PlayerId * 100 + player.Deck.Count + player.Discard.Count + player.Hand.Count;
-        var instance = new CardInstance(definition, instanceId);
-        player.Discard.Add(instance);
-        Debug.Log($"[GameManager] Added {cardId} to Player {player.PlayerId}'s discard.");
+        var instance = new CardInstance(definition, _gameState.GenerateInstanceId());
+
+        // Insert at random position in draw pile rather than shuffling
+        int insertAt = _gameState.Rng.Next(player.Deck.Count + 1);
+        player.Deck.Insert(insertAt, instance);
+        Debug.Log($"[GameManager] Added {cardId} to Player {player.PlayerId}'s deck at position {insertAt}/{player.Deck.Count - 1}.");
+    }
+
+    [Server]
+    private string CardIdToAssetName(string cardId)
+    {
+        // Convert snake_case to PascalCase
+        var parts = cardId.Split('_');
+        return string.Concat(System.Array.ConvertAll(parts,
+            p => char.ToUpper(p[0]) + p.Substring(1)));
     }
 
     [Server]
@@ -1012,35 +1110,39 @@ public class GameManager : NetworkBehaviour
         var characterId = player.Character.CharacterId;
         var rng = _gameState.Rng;
 
-        // 2 Power cards
         var powerPicks = PickRandom(_cardPool.GetPowerPool(characterId), 2);
+
         foreach (var card in powerPicks)
         {
             offer.PowerCards.Add(card.CardId);
+            offer.PowerDisplayNames.Add(card.DisplayName);
             offer.PowerPrices.Add(ShopPricing.Roll(rng, ShopPricing.PowerCard));
         }
 
-        // 2 Strategy cards
         var strategyPicks = PickRandom(_cardPool.GetStrategyPool(characterId), 2);
+
         foreach (var card in strategyPicks)
         {
             offer.StrategyCards.Add(card.CardId);
+            offer.StrategyDisplayNames.Add(card.DisplayName);
             offer.StrategyPrices.Add(ShopPricing.Roll(rng, ShopPricing.StrategyCard));
         }
 
-        // 1 Colorless card
         var colorlessPicks = PickRandom(_cardPool.Colorless, 1);
+
         foreach (var card in colorlessPicks)
         {
             offer.ColorlessCards.Add(card.CardId);
+            offer.ColorlessDisplayNames.Add(card.DisplayName);
             offer.ColorlessPrices.Add(ShopPricing.Roll(rng, ShopPricing.ColorlessCard));
         }
 
-        // 3 Passives
         var passivePicks = PickRandomPassives(_cardPool.Passives, 3);
+
         foreach (var passive in passivePicks)
         {
             offer.Passives.Add(passive.PassiveId);
+            offer.PassiveDisplayNames.Add(passive.DisplayName);
             offer.PassivePrices.Add(ShopPricing.Roll(rng, ShopPricing.Passive));
         }
 
@@ -1294,5 +1396,43 @@ public class GameManager : NetworkBehaviour
         player.FogReveals.FutureUpgradesOpponent = true;
         player.FogReveals.FutureUpgradesSelf = true;
         player.FogReveals.InsightTreeOpponent = true;
+    }
+    [Server]
+    private void ApplyTurnStartStatusEffects(PlayerState player)
+    {
+        foreach (var effect in player.StatusEffects)
+        {
+            switch (effect.EffectId)
+            {
+                case "bleed":
+                    player.TakeDamage(effect.Value);
+                    Debug.Log($"[GameManager] Player {player.PlayerId} took {effect.Value} bleed damage.");
+                    break;
+                case "multiculta_daggers":
+                    player.Resources.PerTurnResource += effect.Value;
+                    Debug.Log($"[GameManager] Player {player.PlayerId} gained {effect.Value} Daggers from Multiculta.");
+                    break;
+                case "blessed_by_storm":
+                    // +2 damage on all attacks this turn — stored as status, read by DealDamageEffect
+                    Debug.Log($"[GameManager] Player {player.PlayerId} has Blessed by the Storm (+2 damage).");
+                    break;
+            }
+        }
+        player.TickStatusEffects(); // decrement durations, remove expired
+    }
+    [Server]
+    private void AwardSilver(PlayerState player, int amount, string reason)
+    {
+        player.Silver += amount;
+        Debug.Log($"[GameManager] Player {player.PlayerId} earned {amount} Silver ({reason}). Total: {player.Silver}");
+    }
+    [Server]
+    private void ApplyPassiveTurnStart(PlayerState player)
+    {
+        foreach (var passive in player.Passives)
+        {
+            var effect = PassiveRegistry.Instance.GetEffect(passive.PassiveId);
+            effect?.OnTurnStart(player, _gameState);
+        }
     }
 }

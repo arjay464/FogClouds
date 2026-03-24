@@ -8,12 +8,60 @@
             <ui:Label name="turn-label" text="Turn 1" class="turn-label"/>
         </ui:VisualElement>
 
+        <!-- OPPONENT INFO BAR -->
+        <ui:VisualElement name="opponent-bar" class="opponent-bar">
+            <!-- LEFT: portrait + name -->
+            <ui:VisualElement name="opponent-character-block" class="opponent-character-block">
+                <ui:VisualElement name="opponent-portrait" class="opponent-portrait">
+                    <ui:Label name="opponent-portrait-label" text="?" class="opponent-portrait-label"/>
+                </ui:VisualElement>
+                <ui:VisualElement name="opponent-vitals-block" class="opponent-vitals-block">
+                    <ui:Label name="opponent-name-label" text="???" class="opponent-name-label"/>
+                    <ui:VisualElement name="opponent-hp-row" class="hp-row">
+                        <ui:VisualElement name="opponent-hp-bar-container" class="bar-container">
+                            <ui:VisualElement name="opponent-hp-bar-fill" class="bar-fill hp-fill opponent-hp-fill"/>
+                            <ui:Label name="opponent-hp-label" text="?" class="bar-label"/>
+                        </ui:VisualElement>
+                        <ui:Label name="opponent-shield-label" text="" class="shield-label"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- MIDDLE: hand / deck / discard counts -->
+            <ui:VisualElement name="opponent-counts" class="opponent-counts">
+                <ui:VisualElement class="opponent-count-block">
+                    <ui:Label name="opponent-hand-count" text="?" class="opponent-count-value"/>
+                    <ui:Label text="HAND" class="opponent-count-label"/>
+                </ui:VisualElement>
+                <ui:Button name="opponent-deck-btn" class="opponent-count-block opponent-pile-btn">
+                    <ui:Label name="opponent-deck-count" text="?" class="opponent-count-value"/>
+                    <ui:Label text="DECK" class="opponent-count-label"/>
+                </ui:Button>
+                <ui:Button name="opponent-discard-btn" class="opponent-count-block opponent-pile-btn">
+                    <ui:Label name="opponent-discard-count" text="?" class="opponent-count-value"/>
+                    <ui:Label text="DISC" class="opponent-count-label"/>
+                </ui:Button>
+            </ui:VisualElement>
+
+            <!-- RIGHT: resources (fogged until revealed) -->
+            <ui:VisualElement name="opponent-resources" class="opponent-resources">
+                <ui:VisualElement class="opponent-resource-row">
+                    <ui:Label name="opponent-daggers-label" text="Daggers: ?" class="opponent-resource-label"/>
+                    <ui:Label name="opponent-persistent-label" text="Persistent: ?" class="opponent-resource-label"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="opponent-resource-row">
+                    <ui:Label name="opponent-sight-label" text="Sight: ?" class="opponent-resource-label"/>
+                    <ui:Label name="opponent-silver-label" text="Silver: ?" class="opponent-resource-label"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <!-- BOARD STATE AREA -->
         <ui:VisualElement name="board-area" class="board-area">
-            <ui:VisualElement name="opponent-board" class="board-zone">
+            <ui:VisualElement name="opponent-board" class="board-zone opponent-board-zone">
                 <ui:Label name="opponent-board-count" text="" class="board-count-badge"/>
             </ui:VisualElement>
-            <ui:VisualElement name="own-board" class="board-zone">
+            <ui:VisualElement name="own-board" class="board-zone own-board-zone">
                 <ui:Label name="own-board-count" text="" class="board-count-badge"/>
             </ui:VisualElement>
         </ui:VisualElement>
@@ -34,10 +82,10 @@
         <ui:VisualElement name="bottom-bar" class="bottom-bar">
 
             <!-- FAR LEFT: Draw Pile -->
-            <ui:VisualElement name="draw-pile" class="pile">
+            <ui:Button name="draw-pile-btn" class="pile pile-btn">
                 <ui:Label name="draw-count" text="12" class="pile-count"/>
                 <ui:Label text="DECK" class="pile-label"/>
-            </ui:VisualElement>
+            </ui:Button>
 
             <!-- CHARACTER BLOCK: portrait + vitals stacked -->
             <ui:VisualElement name="character-block" class="character-block">
@@ -65,38 +113,152 @@
             </ui:VisualElement>
 
             <!-- DISCARD PILE -->
-            <ui:VisualElement name="discard-pile" class="pile">
+            <ui:Button name="discard-pile-btn" class="pile pile-btn">
                 <ui:Label name="discard-count" text="0" class="pile-count"/>
                 <ui:Label text="DISC" class="pile-label"/>
-            </ui:VisualElement>
-
+            </ui:Button>
             <!-- ACTION BUTTONS: end turn + special passives -->
             <ui:VisualElement name="action-buttons" class="action-buttons">
                 <ui:Button name="insight-button" text="INSIGHT" class="action-btn"/>
                 <ui:Button name="passive-button" text="PASSIVE" class="action-btn" style="display: none;"/>
                 <ui:Button name="end-turn-button" text="End Turn" class="end-turn-btn"/>
             </ui:VisualElement>
-            <!-- ROGUELIKE PHASE PANEL -->
-            <ui:VisualElement name="roguelike-panel" class="roguelike-panel" style="display: none;">
-                <ui:VisualElement name="roguelike-panel-inner" class="roguelike-panel-inner">
-                    <ui:Label name="roguelike-title" text="CHOOSE YOUR PATH" class="roguelike-title"/>
-                    
-                    <!-- Category selection — shown first -->
-                    <ui:VisualElement name="category-buttons" class="category-buttons">
-                        <ui:Button name="power-btn" text="POWER" class="roguelike-category-btn roguelike-power-btn"/>
-                        <ui:Button name="strategy-btn" text="STRATEGY" class="roguelike-category-btn roguelike-strategy-btn"/>
-                        <ui:Button name="insight-btn-roguelike" text="INSIGHT  +1 Sight" class="roguelike-category-btn roguelike-insight-btn"/>
-                    </ui:VisualElement>
-
-                    <!-- Card offers — shown after committing to Power or Strategy -->
-                    <ui:VisualElement name="card-offer-buttons" class="card-offer-buttons" style="display: none;"/>
-
-                    <!-- Waiting message — shown after choice submitted -->
-                    <ui:Label name="roguelike-waiting" text="Waiting for opponent..." class="roguelike-waiting" style="display: none;"/>
+        </ui:VisualElement>
+        <!-- ROGUELIKE PHASE PANEL -->
+        <ui:VisualElement name="roguelike-panel" class="roguelike-panel" style="display: none;">
+            <ui:VisualElement name="roguelike-panel-inner" class="roguelike-panel-inner">
+                <ui:Label name="roguelike-title" text="CHOOSE YOUR PATH" class="roguelike-title"/>
+                
+                <!-- Category selection — shown first -->
+                <ui:VisualElement name="category-buttons" class="category-buttons">
+                    <ui:Button name="power-btn" text="POWER" class="roguelike-category-btn roguelike-power-btn"/>
+                    <ui:Button name="strategy-btn" text="STRATEGY" class="roguelike-category-btn roguelike-strategy-btn"/>
+                    <ui:Button name="insight-btn-roguelike" text="INSIGHT  +1 Sight" class="roguelike-category-btn roguelike-insight-btn"/>
                 </ui:VisualElement>
-            </ui:VisualElement>
 
+                <!-- Card offers — shown after committing to Power or Strategy -->
+                <ui:VisualElement name="card-offer-buttons" class="card-offer-buttons" style="display: none;"/>
+
+                <!-- Waiting message — shown after choice submitted -->
+                <ui:Label name="roguelike-waiting" text="Waiting for opponent..." class="roguelike-waiting" style="display: none;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <!-- INSIGHT INFO OVERLAY -->
+        <ui:VisualElement name="insight-overlay" class="insight-overlay" style="display: none;">
+            <ui:VisualElement name="insight-overlay-inner" class="insight-overlay-inner">
+                <ui:VisualElement name="insight-overlay-header" class="insight-overlay-header">
+                    <ui:Label text="INSIGHT" class="insight-overlay-title"/>
+                    <ui:Button name="insight-overlay-close" text="✕" class="overlay-close-btn"/>
+                </ui:VisualElement>
+                <ui:VisualElement name="insight-tabs" class="insight-tabs">
+                    <ui:Button name="tab-past-upgrades" text="Past Upgrades" class="insight-tab"/>
+                    <ui:Button name="tab-future-opponent" text="Their Offers" class="insight-tab"/>
+                    <ui:Button name="tab-future-self" text="Your Offers" class="insight-tab"/>
+                    <ui:Button name="tab-opponent-tree" text="Their Tree" class="insight-tab"/>
+                    <ui:Button name="tab-own-tree" text="Your Tree" class="insight-tab"/>
+                </ui:VisualElement>
+                <ui:ScrollView name="insight-content-scroll" class="insight-content-scroll">
+                    <ui:VisualElement name="insight-content" class="insight-content"/>
+                </ui:ScrollView>
+            </ui:VisualElement>
         </ui:VisualElement>
 
+        <!-- PILE VIEWER OVERLAY -->
+        <ui:VisualElement name="pile-overlay" class="pile-overlay" style="display: none;">
+            <ui:VisualElement name="pile-overlay-inner" class="pile-overlay-inner">
+                <ui:VisualElement name="pile-overlay-header" class="insight-overlay-header">
+                    <ui:Label name="pile-overlay-title" text="Draw Pile" class="insight-overlay-title"/>
+                    <ui:Button name="pile-overlay-close" text="✕" class="overlay-close-btn"/>
+                </ui:VisualElement>
+                <ui:VisualElement name="pile-content" class="pile-content"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- INSIGHT TREE OVERLAY -->
+        <ui:VisualElement name="tree-overlay" class="insight-overlay" style="display: none;">
+            <ui:VisualElement name="tree-overlay-inner" class="insight-overlay-inner">
+                <ui:VisualElement class="insight-overlay-header">
+                    <ui:VisualElement style="flex-direction: column;">
+                        <ui:Label text="INSIGHT TREE" class="insight-overlay-title"/>
+                        <ui:Label name="tree-sight-label" text="Sight Available: 0" class="tree-sight-label"/>
+                    </ui:VisualElement>
+                    <ui:Button name="tree-overlay-close" text="✕" class="overlay-close-btn"/>
+                </ui:VisualElement>
+                <ui:ScrollView name="tree-scroll" class="tree-scroll">
+                    <ui:VisualElement name="tree-content" class="tree-content"/>
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- SHOP PHASE PANEL -->
+        <ui:VisualElement name="shop-panel" class="shop-panel" style="display: none;">
+            <ui:VisualElement name="shop-panel-inner" class="shop-panel-inner">
+                <ui:VisualElement class="insight-overlay-header">
+                    <ui:Label text="SHOP" class="insight-overlay-title"/>
+                    <ui:Label name="shop-silver-label" text="Silver: 0" class="shop-silver-label"/>
+                </ui:VisualElement>
+
+                <!-- Card sections -->
+                <ui:ScrollView class="shop-scroll">
+                    <ui:VisualElement name="shop-content" class="shop-content">
+
+                        <!-- Power Cards -->
+                        <ui:Label text="POWER CARDS" class="shop-section-label"/>
+                        <ui:VisualElement name="shop-power-row" class="shop-row"/>
+
+                        <!-- Strategy Cards -->
+                        <ui:Label text="STRATEGY CARDS" class="shop-section-label"/>
+                        <ui:VisualElement name="shop-strategy-row" class="shop-row"/>
+
+                        <!-- Colorless Cards -->
+                        <ui:Label text="COLORLESS" class="shop-section-label"/>
+                        <ui:VisualElement name="shop-colorless-row" class="shop-row"/>
+
+                        <!-- Passives -->
+                        <ui:Label text="PASSIVES" class="shop-section-label"/>
+                        <ui:VisualElement name="shop-passives-row" class="shop-row"/>
+
+                        <!-- Fixed slots -->
+                        <ui:Label text="SERVICES" class="shop-section-label"/>
+                        <ui:VisualElement name="shop-services-row" class="shop-row"/>
+
+                    </ui:VisualElement>
+                </ui:ScrollView>
+
+                <ui:Button name="shop-done-btn" text="Leave Shop" class="shop-done-btn"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <!-- AUCTION PHASE PANEL -->
+        <ui:VisualElement name="auction-panel" class="shop-panel" style="display: none;">
+            <ui:VisualElement name="auction-panel-inner" class="shop-panel-inner">
+                <ui:VisualElement class="insight-overlay-header">
+                    <ui:Label text="AUCTION" class="insight-overlay-title"/>
+                    <ui:Label name="auction-silver-label" text="Silver: 0" class="shop-silver-label"/>
+                </ui:VisualElement>
+                <ui:Label text="Place your bids. Highest bidder wins each card. Ties go to neither player." class="auction-desc-label"/>
+                <ui:VisualElement name="auction-cards-row" class="auction-cards-row"/>
+                <ui:VisualElement name="auction-submit-row" class="auction-submit-row">
+                    <ui:Button name="auction-submit-btn" text="Submit Bids" class="shop-done-btn"/>
+                </ui:VisualElement>
+                <ui:Label name="auction-waiting-label" text="Bids submitted. Waiting for opponent..." class="roguelike-waiting" style="display: none;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <!-- EVENT PHASE PANEL -->
+        <ui:VisualElement name="event-panel" class="shop-panel" style="display: none;">
+            <ui:VisualElement name="event-panel-inner" class="shop-panel-inner">
+                <ui:VisualElement class="insight-overlay-header">
+                    <ui:Label name="event-title-label" text="EVENT" class="insight-overlay-title"/>
+                </ui:VisualElement>
+                <ui:Label name="event-desc-label" text="" class="auction-desc-label"/>
+
+                <!-- Dynamic content area — populated per event type -->
+                <ui:ScrollView class="shop-scroll">
+                    <ui:VisualElement name="event-content" class="shop-content"/>
+                </ui:ScrollView>
+
+                <ui:Label name="event-waiting-label" text="Waiting for opponent..." 
+                        class="roguelike-waiting" style="display: none;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

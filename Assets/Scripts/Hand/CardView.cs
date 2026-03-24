@@ -19,6 +19,7 @@ public class CardView : VisualElement
     private Label _speedLabel;
     private Label _flavourLabel;
 
+
     public CardView(CardInstanceView data)
     {
         // Load and clone the UXML template

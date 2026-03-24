@@ -14,6 +14,7 @@ namespace FogClouds
         [field: SerializeField] public ResourceCost Cost { get; private set; }
         [field: SerializeField] public string OwnerCharacterId { get; private set; }
         [field: SerializeField] public string EffectId { get; private set; }
+        [field: SerializeField] public bool IsAttack { get; private set; }
     }
 
     [Serializable]

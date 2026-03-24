@@ -18,6 +18,7 @@ namespace FogClouds
         public int ModifiedSpeed;
         public CardType Type;
         public ResourceCost Cost;
+        public bool IsAttack;
     }
 
     // The complete state packet sent to a client each time state is broadcast.
@@ -42,6 +43,22 @@ namespace FogClouds
 
         public bool GameOver;
         public int WinnerPlayerId;
+
+        // This player's shop offer for the current ShopPhase. Null outside ShopPhase.
+        public ShopOffer OwnShopOffer;
+
+        // Auction offer — visible to both players during AuctionPhase. Null outside.
+        public AuctionOffer CurrentAuctionOffer;
+
+        // Whether this player has already submitted their bids.
+        public bool AuctionBidsSubmitted;
+        // Current event during EventPhase. Null outside EventPhase.
+        public string CurrentEventId;
+        public string CurrentEventDisplayName;
+        public string CurrentEventDescription;
+        public bool OwnChoiceSubmitted;    // has this player submitted their event choice
+        public bool EventChoiceRequired;   // does this event require player input
+        public List<CardInstanceView> EventRevealedCards;
 
     }
 
@@ -106,6 +123,7 @@ namespace FogClouds
         public bool UpgradeChoiceSubmitted;
         public bool PowerCategoryCommitted;
         public bool StrategyCategoryCommitted;
+        public bool InsightCategoryCommitted;
     }
 
     // A queue entry as seen by a client.
@@ -136,10 +154,26 @@ namespace FogClouds
                 OpponentState = BuildOpponentView(viewer),
                 OwnQueue = BuildQueueView(state.GetQueue(viewerPlayerId)),
                 MergedQueue = state.MergedQueue != null
-                                    ? BuildQueueView(state.MergedQueue)
-                                    : null,
+                    ? BuildQueueView(state.MergedQueue)
+                    : null,
                 GameOver = state.GameOver,
-                WinnerPlayerId = state.WinnerPlayerId
+                WinnerPlayerId = state.WinnerPlayerId,
+                OwnShopOffer = state.CurrentPhase == TurnPhase.ShopPhase
+                    ? (viewerPlayerId == 0 ? state.Player0ShopOffer : state.Player1ShopOffer)
+                    : null,
+                CurrentAuctionOffer = state.CurrentPhase == TurnPhase.AuctionPhase
+                    ? state.AuctionOffer
+                    : null,
+                AuctionBidsSubmitted = state.CurrentPhase == TurnPhase.AuctionPhase
+                    ? (viewerPlayerId == 0 ? state.AuctionOffer.Player0Submitted : state.AuctionOffer.Player1Submitted)
+                    : false,
+                CurrentEventId = state.CurrentPhase == TurnPhase.EventPhase ? state.CurrentEventId : null,
+                CurrentEventDisplayName = BuildEventDisplayName(state),
+                CurrentEventDescription = BuildEventDescription(state),
+                OwnChoiceSubmitted = state.CurrentPhase == TurnPhase.EventPhase
+                    && state.PlayerEventChoices[viewerPlayerId] != null,
+                EventChoiceRequired = BuildEventChoiceRequired(state),
+                EventRevealedCards = BuildEventRevealedCards(state, viewerPlayerId),
             };
         }
 
@@ -167,6 +201,7 @@ namespace FogClouds
                 Silver = viewer.Silver,
                 UpgradeChoiceSubmitted = viewer.UpgradeChoiceSubmitted,
                 PowerCategoryCommitted = viewer.PowerCategoryCommitted,
+                InsightCategoryCommitted = viewer.InsightCategoryCommitted,
                 StrategyCategoryCommitted = viewer.StrategyCategoryCommitted
             };
         }
@@ -218,6 +253,7 @@ namespace FogClouds
                 Silver = -1,
                 UpgradeChoiceSubmitted = false,
                 PowerCategoryCommitted = false,
+                InsightCategoryCommitted = false,
                 StrategyCategoryCommitted = false
 
             };
@@ -245,7 +281,10 @@ namespace FogClouds
                 FutureOffers = null,
                 InsightTree = null,
                 Silver = -1,
-                UpgradeChoiceSubmitted = false
+                UpgradeChoiceSubmitted = false,
+                InsightCategoryCommitted = false,
+                PowerCategoryCommitted = false,
+                StrategyCategoryCommitted = false
             };
         }
 
@@ -258,9 +297,12 @@ namespace FogClouds
                 DisplayName = c?.DisplayName,
                 ModifiedSpeed = c.ModifiedSpeed,
                 Type = c?.Type ?? CardType.Queueable,
-                Cost = c?.Cost ?? new ResourceCost()
+                Cost = c?.Cost ?? new ResourceCost(),
+                IsAttack = c.IsAttack,
             };
         }
+
+        public static CardInstanceView ToViewPublic(CardInstance c) => ToView(c);
 
         private static List<CardInstanceView> ToViewList(List<CardInstance> cards)
         {
@@ -280,6 +322,37 @@ namespace FogClouds
 
         // Phase 5 stubs
         private static List<string> GetPastUpgrades(PlayerState viewer) => null;
-        private static InsightTreeState GetOpponentInsightTree(PlayerState viewer) => null;
+        private static InsightTreeState GetOpponentInsightTree(PlayerState viewer)
+        {
+            return viewer.TurnStartSnapshot?.InsightTree?.Clone();
+        }
+        private static string BuildEventDisplayName(GameState state)
+        {
+            if (state.CurrentPhase != TurnPhase.EventPhase || state.CurrentEventId == null) return null;
+            return state.CurrentEventId;
+        }
+
+        private static string BuildEventDescription(GameState state)
+        {
+            // Description is looked up client-side from eventId
+            return null;
+        }
+
+        private static bool BuildEventChoiceRequired(GameState state)
+        {
+            if (state.CurrentPhase != TurnPhase.EventPhase) return false;
+            var effect = GameEventRegistry.Instance?.GetEffect(state.CurrentEventId);
+            return effect?.IsInteractive ?? false;
+        }
+
+        private static List<CardInstanceView> BuildEventRevealedCards(GameState state, int viewerPlayerId)
+        {
+            if (state.CurrentPhase != TurnPhase.EventPhase) return null;
+            if (state.CurrentEventId != "writing_on_the_wall") return null;
+            var player = state.GetPlayer(viewerPlayerId);
+            // Server stores revealed cards in a temp list on GameState
+            return state.EventRevealedCards?[viewerPlayerId]?
+                .Select(c => FogFilter.ToViewPublic(c)).ToList();
+        }
     }
 }

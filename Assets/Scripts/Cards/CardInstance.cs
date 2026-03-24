@@ -23,12 +23,13 @@ namespace FogClouds
         public int ModifiedSpeed;
 
         public int BaseSpeed;
-
+        public bool IsAttack;
         public CardType Type;
 
         public ResourceCost Cost;
 
         public string EffectId;
+        public bool WasUpcast;
 
         public CardInstance() { }
 
@@ -42,6 +43,8 @@ namespace FogClouds
             Cost = definition.Cost;
             EffectId = definition.EffectId;
             DisplayName = definition.DisplayName;
+            IsAttack = definition.IsAttack;
+            WasUpcast = false;
         }
 
         //Resets ModifiedSpeed back to the base value from the definition.
@@ -63,7 +66,9 @@ namespace FogClouds
                 Type = this.Type,
                 Cost = this.Cost,
                 EffectId = this.EffectId,
-                DisplayName = this.DisplayName
+                DisplayName = this.DisplayName,
+                IsAttack = this.IsAttack,
+                WasUpcast = this.WasUpcast
             };
         }
 

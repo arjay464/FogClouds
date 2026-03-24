@@ -28,51 +28,6 @@ public class PlayerNetworkAgent : NetworkBehaviour
         GameManager.Instance.HandleQueueFirstCard(this, upcast: false);
     }
 
-    void OnGUI()
-    {
-        if (!isLocalPlayer) return;
-
-        GUILayout.BeginArea(new Rect(10, 110, 200, 600));
-
-        if (GUILayout.Button("Queue First Card"))
-            CmdQueueCard(upcast: false);
-
-        if (GUILayout.Button("Queue First Card (Upcast)"))
-            CmdQueueCard(upcast: true);
-
-        if (GUILayout.Button("Play First Instant"))
-            CmdPlayFirstInstant();
-
-        if (GUILayout.Button("End Turn"))
-            CmdSubmitEndTurn();
-
-        if (GUILayout.Button("Play First Permanent"))
-            CmdPlayFirstPermanent();
-
-        if (GUILayout.Button("Choose POWER (stub)"))
-            CmdSubmitRoguelikeChoice(RoguelikeCategory.Power, "");
-
-        if (GUILayout.Button("Choose INSIGHT"))
-            CmdChooseInsight();
-
-        if (GUILayout.Button("Unlock CharacterIdentity"))
-            CmdUnlockNode("character_identity");
-
-        if (GUILayout.Button("Submit Roguelike Choice"))
-            CmdSubmitRoguelikeChoice();
-
-        if (GUILayout.Button("Choose Power [0]"))
-            CmdChoosePower(0);
-
-        if (GUILayout.Button("Choose Strategy [0]"))
-            CmdChooseStrategy(0);
-
-        if (GUILayout.Button("Submit Auction Bids (1,1,1)"))
-            CmdSubmitAuctionBids(1, 1, 1);
-
-        GUILayout.EndArea();
-    }
-
     [Command]
     public void CmdPlayFirstInstant()
     {

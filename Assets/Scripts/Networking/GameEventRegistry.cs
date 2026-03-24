@@ -21,8 +21,14 @@ public class GameEventRegistry : MonoBehaviour
 
     private void RegisterEffects()
     {
-        // Phase 5: register events here
-        // _effects["blood_tithe"] = new BloodTitheEffect();
+        _effects["chopping_block"] = new ChoppingBlockEffect();
+        _effects["blessing_in_disguise"] = new BlessingInDisguiseEffect();
+        _effects["calm_before_the_storm"] = new CalmBeforeTheStormEffect();
+        _effects["too_good_to_be_true"] = new TooGoodToBeTrueEffect();
+        _effects["deal_with_the_devil"] = new DealWithTheDevilEffect();
+        _effects["writing_on_the_wall"] = new WritingOnTheWallEffect();
+        _effects["fortune_favors_the_bold"] = new FortuneFavorsTheBoldEffect();
+        Debug.Log($"[GameEventRegistry] Registered {_effects.Count} events.");
 
         Debug.Log($"[GameEventRegistry] Registered {_effects.Count} events.");
     }

@@ -37,6 +37,7 @@ namespace FogClouds
 
         //Pre-generated roguelike offers for the upcoming roguelike phase.
         public RoguelikeOffers UpcomingOffers;
+        public InsightTreeState InsightTree;
 
         // Creates a PlayerSnapshot from a live PlayerState.
         // Deep copies all mutable collections so the snapshot is fully independent of live state.
@@ -58,7 +59,8 @@ namespace FogClouds
                 Resources = source.Resources.Clone(),
                 Silver = source.Silver,
                 Board = source.Board.Select(b => b.Clone()).ToList(),
-                UpcomingOffers = source.UpcomingOffers?.Clone()
+                UpcomingOffers = source.UpcomingOffers?.Clone(),
+                InsightTree = source.InsightTree?.Clone()
             };
         }
     }

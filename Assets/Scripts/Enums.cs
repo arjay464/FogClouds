@@ -55,6 +55,7 @@ namespace FogClouds
         DuplicateCapExceeded
     }
 
+
     public enum ShopPurchaseType
     {
         PowerCard,

@@ -26,6 +26,9 @@ namespace FogClouds
 
         public int TieBreaker;
 
+        public int BonusDamage; // from passives like Blessing of Valor
+        public bool WasUpcast;
+
         public QueueEntry() { }
 
         public QueueEntry(int ownerId, CardInstance card, int queuePosition)

@@ -24,16 +24,20 @@ namespace FogClouds
     [Serializable]
     public class RoguelikeOffers
     {
-        public List<string> PowerOffers;    // 3 CardIds
-        public List<int> PowerPrices;       // parallel list — price per card
-        public List<string> StrategyOffers; // 3 CardIds
+        public List<string> PowerOffers;      // CardIds
+        public List<string> PowerDisplayNames; // parallel display names
+        public List<int> PowerPrices;
+        public List<string> StrategyOffers;
+        public List<string> StrategyDisplayNames;
         public List<int> StrategyPrices;
 
         public RoguelikeOffers()
         {
             PowerOffers = new List<string>();
+            PowerDisplayNames = new List<string>();
             PowerPrices = new List<int>();
             StrategyOffers = new List<string>();
+            StrategyDisplayNames = new List<string>();
             StrategyPrices = new List<int>();
         }
 
@@ -42,8 +46,10 @@ namespace FogClouds
             return new RoguelikeOffers
             {
                 PowerOffers = new List<string>(this.PowerOffers),
+                PowerDisplayNames = new List<string>(this.PowerDisplayNames),
                 PowerPrices = new List<int>(this.PowerPrices),
                 StrategyOffers = new List<string>(this.StrategyOffers),
+                StrategyDisplayNames = new List<string>(this.StrategyDisplayNames),
                 StrategyPrices = new List<int>(this.StrategyPrices),
             };
         }
@@ -60,6 +66,10 @@ namespace FogClouds
         public List<int> ColorlessPrices;
         public List<string> Passives;
         public List<int> PassivePrices;
+        public List<string> PowerDisplayNames;
+        public List<string> StrategyDisplayNames;
+        public List<string> ColorlessDisplayNames;
+        public List<string> PassiveDisplayNames;
         public int HpRegenSmallCost;
         public int HpRegenLargeCost;
         public int SightSmallCost;
@@ -76,6 +86,10 @@ namespace FogClouds
             ColorlessPrices = new List<int>();
             Passives = new List<string>();
             PassivePrices = new List<int>();
+            PowerDisplayNames = new List<string>();
+            StrategyDisplayNames = new List<string>();
+            ColorlessDisplayNames = new List<string>();
+            PassiveDisplayNames = new List<string>();
         }
     }
 }

@@ -21,9 +21,11 @@ public class PassiveRegistry : MonoBehaviour
 
     private void RegisterPassives()
     {
-        // Phase 5: register passives here
-        // _passives["sigil_amplifier"] = new SigilAmplifierPassive();
-
+        _passives["pact_of_the_devil"] = new PactOfTheDevilPassive();
+        _passives["blessing_of_valor"] = new BlessingOfValorPassive();
+        _passives["blessing_of_clarity"] = new BlessingOfClarityPassive();
+        _passives["blessing_of_grace"] = new BlessingOfGracePassive();
+        _passives["blessing_of_fortitude"] = new BlessingOfFortitudePassive();
         Debug.Log($"[PassiveRegistry] Registered {_passives.Count} passives.");
     }
 

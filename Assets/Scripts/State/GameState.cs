@@ -44,6 +44,12 @@ namespace FogClouds
         public string CurrentEventId;          // set at EnterEventPhase
         public string[] PlayerEventChoices;    // length 2, null = not submitted
 
+        // Temporary storage for Writing on the Wall revealed cards, indexed by player
+        public List<CardInstance>[] EventRevealedCards;
+
+        private int _nextInstanceId = 10000;
+        public int GenerateInstanceId() => _nextInstanceId++;
+
         //Win Condition
         public bool GameOver;
         public int WinnerPlayerId; // -1 = no winner yet
@@ -113,10 +119,34 @@ namespace FogClouds
         public void EnqueueCard(int playerId, CardInstance card)
         {
             var queue = GetQueue(playerId);
-            var entry = new QueueEntry(playerId, card, queue.Count)
+            var player = GetPlayer(playerId);
+
+            int speed = card.ModifiedSpeed;
+            int bonusDamage = 0;
+
+            foreach (var passive in player.Passives)
             {
-                TieBreaker = Rng.Next()
+                switch (passive.PassiveId)
+                {
+                    case "blessing_of_grace":
+                        speed += 2 * passive.StackCount;
+                        break;
+                    case "blessing_of_valor":
+                        bonusDamage += 1 * passive.StackCount;
+                        break;
+                    case "pact_of_the_devil":
+                        bonusDamage += passive.StackCount;
+                        break;
+                }
+            }
+
+            var entry = new QueueEntry(playerId, card, speed)
+            {
+                TieBreaker = Rng.Next(),
+                BonusDamage = bonusDamage,
+                WasUpcast = card.WasUpcast
             };
+
             queue.Add(entry);
             SortPlayerQueue(playerId);
         }
@@ -185,5 +215,17 @@ namespace FogClouds
         private static Action<string> _logger = Console.WriteLine;
         public static void SetLogger(Action<string> logger) => _logger = logger;
         private static void UnityEngine_Debug_Log(string msg) => _logger?.Invoke($"[GameState] {msg}");
+
+        public void DestroyPermanent(int destroyerPlayerId, BoardPermanent target)
+        {
+            var owner = GetPlayer(target.OwnerId);
+            var destroyer = GetPlayer(destroyerPlayerId);
+
+            if (!owner.Board.Remove(target)) return;
+
+            destroyer.Silver += 3;
+
+            Debug.Log($"[GameState] Player {destroyerPlayerId} destroyed {target.DisplayName}, earned 3 Silver.");
+        }
     }
 }

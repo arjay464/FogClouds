@@ -16,8 +16,6 @@ public class HandController : MonoBehaviour
     private bool _rebuildInProgress = false;
 
     // Fan settings
-    private const float FanSpread = 6f;
-    private const float FanRaise = 10f;
     private const float CardOverlap = 28f;
     private const float CardWidth = 80f;
     private const float CardHeight = 112f;
@@ -111,27 +109,20 @@ public class HandController : MonoBehaviour
         if (count == 0) return;
         if (_handArea?.panel == null) return;
 
-        float centerIndex = (count - 1) / 2f;
-
         for (int i = 0; i < count; i++)
         {
             var card = _cardViews[i];
             if (card == _draggedCard) continue;
 
-            float offset = i - centerIndex;
-            float rotation = offset * FanSpread;
-            float raise = centerIndex == 0 ? FanRaise :
-                            FanRaise - Mathf.Abs(offset) * (FanRaise / centerIndex);
             float xPos = i * (CardWidth - CardOverlap);
 
             card.style.width = CardWidth;
             card.style.height = CardHeight;
             card.style.position = Position.Absolute;
             card.style.left = xPos;
-            card.style.bottom = raise;
-            card.style.rotate = new StyleRotate(new Rotate(rotation));
-            card.style.transformOrigin = new StyleTransformOrigin(
-                new TransformOrigin(Length.Percent(50), Length.Percent(110)));
+            card.style.bottom = 0;
+            card.style.rotate = new StyleRotate(new Rotate(0));
+            card.style.transformOrigin = StyleKeyword.Initial;
         }
     }
 
@@ -228,8 +219,6 @@ public class HandController : MonoBehaviour
         if (overPlayZone)
         {
             PlayCard(_draggedCard);
-            // Don't remove from _cardViews here — let the state broadcast
-            // handle it. If the server rejects, the card snaps back naturally.
             _draggedCard.style.position = Position.Absolute;
             _draggedCard.style.left = StyleKeyword.Null;
             _draggedCard.style.top = StyleKeyword.Null;
