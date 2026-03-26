@@ -28,6 +28,8 @@ namespace FogClouds
         //Turns remaining before this permanent expires. -1 = lasts until removed.
         public int TurnsRemaining;
 
+        public CardInstance SourceCard;
+
         //Stub for phase 0 - board permanents should have some effect defined
 
         public BoardPermanent() { }
@@ -40,7 +42,8 @@ namespace FogClouds
                 DisplayName = this.DisplayName,
                 OwnerId = this.OwnerId,
                 TurnsRemaining = this.TurnsRemaining,
-                ProtectedThisTurn = false
+                ProtectedThisTurn = false,
+                SourceCard = this.SourceCard
             };
         }
         public virtual void OnTurnStart()

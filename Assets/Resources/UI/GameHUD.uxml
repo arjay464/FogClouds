@@ -29,10 +29,7 @@
 
             <!-- MIDDLE: hand / deck / discard counts -->
             <ui:VisualElement name="opponent-counts" class="opponent-counts">
-                <ui:VisualElement class="opponent-count-block">
-                    <ui:Label name="opponent-hand-count" text="?" class="opponent-count-value"/>
-                    <ui:Label text="HAND" class="opponent-count-label"/>
-                </ui:VisualElement>
+                <ui:Button name="opponent-hand-btn" text="?" class="opponent-count-block opponent-pile-btn"/>
                 <ui:Button name="opponent-deck-btn" class="opponent-count-block opponent-pile-btn">
                     <ui:Label name="opponent-deck-count" text="?" class="opponent-count-value"/>
                     <ui:Label text="DECK" class="opponent-count-label"/>
@@ -244,21 +241,21 @@
             </ui:VisualElement>
         </ui:VisualElement>
         <!-- EVENT PHASE PANEL -->
-        <ui:VisualElement name="event-panel" class="shop-panel" style="display: none;">
-            <ui:VisualElement name="event-panel-inner" class="shop-panel-inner">
-                <ui:VisualElement class="insight-overlay-header">
-                    <ui:Label name="event-title-label" text="EVENT" class="insight-overlay-title"/>
-                </ui:VisualElement>
-                <ui:Label name="event-desc-label" text="" class="auction-desc-label"/>
-
-                <!-- Dynamic content area — populated per event type -->
-                <ui:ScrollView class="shop-scroll">
-                    <ui:VisualElement name="event-content" class="shop-content"/>
-                </ui:ScrollView>
-
-                <ui:Label name="event-waiting-label" text="Waiting for opponent..." 
-                        class="roguelike-waiting" style="display: none;"/>
+    <ui:VisualElement name="event-panel" class="shop-panel" style="display: none;">
+        <ui:VisualElement name="event-panel-inner" class="shop-panel-inner">
+            <ui:VisualElement class="insight-overlay-header">
+                <ui:Label name="event-title-label" text="EVENT" class="insight-overlay-title"/>
             </ui:VisualElement>
+            <ui:Label name="event-desc-label" text="" class="auction-desc-label"/>
+
+            <!-- Dynamic content area — populated per event type -->
+            <ui:ScrollView class="shop-scroll">
+                <ui:VisualElement name="event-content" class="shop-content"/>
+            </ui:ScrollView>
+
+            <ui:Label name="event-waiting-label" text="Waiting for opponent..." 
+                    class="roguelike-waiting" style="display: none;"/>
         </ui:VisualElement>
+    </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

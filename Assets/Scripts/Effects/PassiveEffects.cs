@@ -39,20 +39,13 @@ public class BlessingOfClarityPassive : IPassiveEffect
 
     public void OnAcquire(PlayerState player, GameState state)
     {
-        // Mark as not yet triggered using StackCount — 0 = not fired, 1 = fired
-    }
-
-    public void OnTurnStart(PlayerState player, GameState state)
-    {
+        player.DrawCards(3, state.Rng);
         var passive = player.Passives.Find(p => p.PassiveId == "blessing_of_clarity");
-        if (passive != null && passive.StackCount == 0)
-        {
-            player.DrawCards(3, state.Rng);
-            passive.StackCount = 1;
-            Debug.Log($"[BlessingOfClarity] Player {player.PlayerId} drew 3 extra cards.");
-        }
+        if (passive != null) passive.StackCount = 1;
+        Debug.Log($"[BlessingOfClarity] Player {player.PlayerId} drew 3 extra cards on acquire.");
     }
 
+    public void OnTurnStart(PlayerState player, GameState state) { }
     public void OnDamageTaken(PlayerState player, int amount, GameState state) { }
     public void OnCardPlayed(PlayerState player, CardInstance card, GameState state) { }
 }

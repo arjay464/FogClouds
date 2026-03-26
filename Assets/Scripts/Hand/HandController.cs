@@ -128,6 +128,7 @@ public class HandController : MonoBehaviour
 
     private void RegisterDragCallbacks(CardView card)
     {
+        // CardView.RegisterCallbacks — replace the right-click block:
         card.RegisterCallback<PointerDownEvent>(evt =>
         {
             if (evt.button != 0) return;
@@ -236,7 +237,10 @@ public class HandController : MonoBehaviour
         }
 
         _draggedCard.SetDragging(false);
-        _draggedCard.SetSelected(false);
+        if (overPlayZone)
+            _draggedCard.ResetState();  // played — wipe all transient state
+        else
+            _draggedCard.SetSelected(false);  // snapped back — keep upcast intent
         _draggedCard = null;
 
         _playZone.style.backgroundColor = new StyleColor(new Color(0f, 0f, 0f, 0f));

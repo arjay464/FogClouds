@@ -66,6 +66,6 @@ namespace FogClouds
         HpRegenLarge,
         SightSmall,
         SightLarge,
-        PersistentResource
+        PerTurnResource
     }
 }

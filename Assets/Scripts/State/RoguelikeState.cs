@@ -74,7 +74,7 @@ namespace FogClouds
         public int HpRegenLargeCost;
         public int SightSmallCost;
         public int SightLargeCost;
-        public int PersistentResourceCost;
+        public int PerTurnResourceCost;
 
         public ShopOffer()
         {

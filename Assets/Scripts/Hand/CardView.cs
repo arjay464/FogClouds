@@ -107,7 +107,7 @@ public class CardView : VisualElement
         RegisterCallback<ContextualMenuPopulateEvent>(evt => evt.StopPropagation());
         RegisterCallback<PointerDownEvent>(evt =>
         {
-            if (evt.button == 1 && IsSelected)
+            if (evt.button == 1 && CardData.IsAttack)
             {
                 ToggleUpcast();
                 evt.StopPropagation();
@@ -122,11 +122,14 @@ public class CardView : VisualElement
         if (selected)
             cardRoot.AddToClassList("card-selected");
         else
-        {
             cardRoot.RemoveFromClassList("card-selected");
-            // Deselecting clears upcast too
-            SetUpcast(false);
-        }
+    }
+
+    // Call this when the card leaves the hand (played or discarded) to fully reset it.
+    public void ResetState()
+    {
+        SetSelected(false);
+        SetUpcast(false);
     }
 
     public void ToggleUpcast() => SetUpcast(!IsUpcast);

@@ -56,6 +56,7 @@ namespace FogClouds
         public string CurrentEventId;
         public string CurrentEventDisplayName;
         public string CurrentEventDescription;
+        public string EventOutcome;
         public bool OwnChoiceSubmitted;    // has this player submitted their event choice
         public bool EventChoiceRequired;   // does this event require player input
         public List<CardInstanceView> EventRevealedCards;
@@ -134,6 +135,7 @@ namespace FogClouds
         public int CurrentSpeed;
         public int QueuePosition;
         public CardInstanceView Card;
+        public bool WasUpcast;
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -146,12 +148,19 @@ namespace FogClouds
         {
             PlayerState viewer = state.GetPlayer(viewerPlayerId);
 
+            bool viewerCommitted = state.CurrentPhase == TurnPhase.RoguelikePhase && viewer.UpgradeChoiceSubmitted
+                || state.CurrentPhase == TurnPhase.ShopPhase && viewer.ShopDoneSubmitted
+                || state.CurrentPhase == TurnPhase.AuctionPhase
+                    && (viewerPlayerId == 0 ? state.AuctionOffer.Player0Submitted : state.AuctionOffer.Player1Submitted)
+                || (state.CurrentPhase == TurnPhase.EventPhase
+                    && state.PlayerEventChoices?[viewerPlayerId] != null);
+
             return new ClientGameStateView
             {
                 CurrentPhase = state.CurrentPhase,
                 TurnNumber = state.TurnNumber,
                 OwnState = BuildOwnView(viewer),
-                OpponentState = BuildOpponentView(viewer),
+                OpponentState = BuildOpponentView(viewer, state.GetOpponent(viewerPlayerId), state.CurrentPhase, viewerCommitted),
                 OwnQueue = BuildQueueView(state.GetQueue(viewerPlayerId)),
                 MergedQueue = state.MergedQueue != null
                     ? BuildQueueView(state.MergedQueue)
@@ -174,6 +183,7 @@ namespace FogClouds
                     && state.PlayerEventChoices[viewerPlayerId] != null,
                 EventChoiceRequired = BuildEventChoiceRequired(state),
                 EventRevealedCards = BuildEventRevealedCards(state, viewerPlayerId),
+                EventOutcome = state.CurrentPhase == TurnPhase.EventPhase ? state.EventOutcome : null
             };
         }
 
@@ -212,7 +222,7 @@ namespace FogClouds
             return board?.Select(_ => new BoardPermanent { PermanentId = "hidden" }).ToList();
         }
 
-        private static PlayerStateView BuildOpponentView(PlayerState viewer)
+        private static PlayerStateView BuildOpponentView(PlayerState viewer, PlayerState liveOpponent, TurnPhase phase, bool viewerCommitted)
         {
             var fog = viewer.FogReveals;
             var snap = viewer.TurnStartSnapshot;
@@ -220,37 +230,42 @@ namespace FogClouds
             if (snap == null)
                 return FullFogView();
 
+            bool useLiveState = phase == TurnPhase.QueueResolution || viewerCommitted;
+
             return new PlayerStateView
             {
                 PlayerId = snap.PlayerID,
 
                 CharacterId = fog.CharacterIdentity ? snap.CharacterId : null,
-                HP = fog.CharacterHP ? snap.HP : -1,
-                Shield = fog.CharacterHP ? snap.Shield : -1,
-                Resources = fog.CharacterResources ? snap.Resources : null,
+                HP = fog.CharacterHP ? (useLiveState ? liveOpponent.HP : snap.HP) : -1,
+                Shield = fog.CharacterHP ? (useLiveState ? liveOpponent.Shield : snap.Shield) : -1,
+                Resources = fog.CharacterResources ? (useLiveState ? liveOpponent.Resources : snap.Resources) : null,
 
-                HandSize = fog.HandSize ? snap.Hand.Count : -1,
-                Hand = fog.HandContents ? ToViewList(snap.Hand) : null,
+                HandSize = fog.HandSize ? (useLiveState ? liveOpponent.Hand.Count : snap.Hand.Count) : -1,
+                Hand = fog.HandContents ? (useLiveState ? ToViewList(liveOpponent.Hand) : ToViewList(snap.Hand)) : null,
 
-                DeckCount = fog.DrawPileCount ? snap.DeckCount : -1,
+                DeckCount = fog.DrawPileCount ? (useLiveState ? liveOpponent.Deck.Count() : snap.DeckCount) : -1,
 
-                Deck = fog.DrawPileContents ? ToViewList(snap.Deck) :
+                Deck = fog.DrawPileContents ? (useLiveState ? ToViewList(liveOpponent.Deck) : ToViewList(snap.Deck)) :
                 fog.DrawPileOrdered ? ToViewList(snap.Deck) : null,
 
-                DiscardCount = fog.DiscardPileCount ? snap.DiscardCount : -1,
-                Discard = fog.DiscardPileContents ? ToViewList(snap.Discard) : null,
+                DiscardCount = fog.DiscardPileCount ? (useLiveState ? liveOpponent.Discard.Count() : snap.DiscardCount) : -1,
+                Discard = fog.DiscardPileContents ? (useLiveState ? ToViewList(liveOpponent.Discard) : ToViewList(snap.Discard)) : null,
 
-                Board = fog.BoardState ? snap.Board :
-                fog.PermanentsOpponentCount ? PartialBoardView(snap.Board) : null,
+                Board = fog.BoardState ? (useLiveState ? liveOpponent.Board : snap.Board) :
+                fog.PermanentsOpponentCount ? (useLiveState ? PartialBoardView(liveOpponent.Board) : PartialBoardView(snap.Board)) : null,
 
-                PassiveCount = fog.PassivesOpponentCount ? snap.PassiveCount : -1,
-                Passives = fog.PassivesOpponent ? snap.Passives : null,
+                PassiveCount = fog.PassivesOpponentCount ? (useLiveState ? liveOpponent.Passives.Count() : snap.PassiveCount) : -1,
+                Passives = fog.PassivesOpponent ? (useLiveState ? liveOpponent.Passives : snap.Passives) : null,
 
-                PastUpgrades = fog.PastUpgrades ? GetPastUpgrades(viewer) : null,
-                FutureOffers = fog.FutureUpgradesOpponent ? snap.UpcomingOffers : null,
-                InsightTree = fog.InsightTreeOpponent ? GetOpponentInsightTree(viewer) : null,
-                // Silver is not a revealable field — always hidden for opponent
-                Silver = -1,
+                PastUpgrades = fog.PastUpgrades ? (useLiveState ? GetPastUpgrades(liveOpponent) : GetPastUpgrades(viewer)) : null,
+                FutureOffers = fog.FutureUpgradesOpponent ? (useLiveState ? liveOpponent.UpcomingOffers : snap.UpcomingOffers) : null,
+                InsightTree = fog.InsightTreeOpponent ? (useLiveState ? GetOpponentInsightTree(liveOpponent) : GetOpponentInsightTree(viewer)
+                ) : fog.CharacterResources && snap.InsightTree != null
+                        ? (useLiveState ? new InsightTreeState { SightBanked = liveOpponent.InsightTree.SightBanked }
+                        : new InsightTreeState { SightBanked = snap.InsightTree.SightBanked })
+                        : null,
+                Silver = fog.CharacterResources ? (useLiveState ? liveOpponent.Silver : snap.Silver) : -1,
                 UpgradeChoiceSubmitted = false,
                 PowerCategoryCommitted = false,
                 InsightCategoryCommitted = false,
@@ -316,7 +331,8 @@ namespace FogClouds
                 OwnerId = e.OwnerId,
                 CurrentSpeed = e.CurrentSpeed,
                 QueuePosition = e.QueuePosition,
-                Card = ToView(e.Card)
+                Card = ToView(e.Card),
+                WasUpcast = e.Card.WasUpcast
             }).ToList();
         }
 

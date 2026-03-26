@@ -200,6 +200,11 @@ public class GameManager : NetworkBehaviour
         GenerateRoguelikeOffers(_gameState.GetPlayer(0));
         GenerateRoguelikeOffers(_gameState.GetPlayer(1));
 
+        //Snapshot taken at beginning of roguelike phase so opponent info doesn't regress back to TurnStartSnapshot after QueueResolution ends
+
+        _gameState.Player1.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player2);
+        _gameState.Player2.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player1);
+
         StateRelay.Instance.BroadcastToAll();
     }
 
@@ -212,6 +217,9 @@ public class GameManager : NetworkBehaviour
 
         _gameState.Player0ShopOffer = GenerateShopOffer(_gameState.GetPlayer(0));
         _gameState.Player1ShopOffer = GenerateShopOffer(_gameState.GetPlayer(1));
+
+        _gameState.Player1.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player2);
+        _gameState.Player2.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player1);
 
         _shopVotes = 0;
         StateRelay.Instance.BroadcastToAll();
@@ -228,6 +236,9 @@ public class GameManager : NetworkBehaviour
 
         var auctionPicks = PickRandom(_cardPool.Auction, 3);
 
+        _gameState.Player1.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player2);
+        _gameState.Player2.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player1);
+
         foreach (var card in auctionPicks)
         {
             _gameState.AuctionOffer.CardIds.Add(card.CardId);
@@ -243,6 +254,10 @@ public class GameManager : NetworkBehaviour
     {
         CurrentPhase = TurnPhase.EventPhase;
         _gameState.CurrentPhase = TurnPhase.EventPhase;
+
+        _gameState.Player1.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player2);
+        _gameState.Player2.TurnStartSnapshot = PlayerSnapshot.From(_gameState.Player1);
+
         _gameState.PlayerEventChoices = new string[2];
 
         if (_eventPool == null || _eventPool.EventPool == null || _eventPool.EventPool.Length == 0)
@@ -269,7 +284,6 @@ public class GameManager : NetworkBehaviour
 
         if (!effect.IsInteractive)
         {
-            // Apply immediately, no player input needed
             effect.Apply(_gameState);
             Debug.Log($"[GameManager] Event {_gameState.CurrentEventId} applied immediately.");
             StateRelay.Instance.BroadcastToAll();
@@ -277,9 +291,10 @@ public class GameManager : NetworkBehaviour
         }
         else
         {
-            // Call Apply for interactive events that need server-side setup before players choose
-            // (e.g. Writing on the Wall needs to populate EventRevealedCards before broadcasting)
-            effect.Apply(_gameState);
+            // Writing on the Wall needs server-side setup before players can choose
+            if (_gameState.CurrentEventId == "writing_on_the_wall")
+                effect.Apply(_gameState);
+
             StateRelay.Instance.BroadcastToAll();
         }
     }
@@ -388,14 +403,13 @@ public class GameManager : NetworkBehaviour
                 return;
             }
 
-            string upcastId = effectId + "_upcast";
+            string upcastId = effectId.Replace("_base", "") + "_upcast";
             if (CardEffectRegistry.Instance.GetEffect(upcastId) == null)
             {
                 Debug.LogWarning($"[GameManager] Card {effectId} has no upcast variant.");
                 return;
             }
 
-            card.WasUpcast = true;
             player.Resources.PerTurnResource -= 1;
             effectId = upcastId;
         }
@@ -404,7 +418,7 @@ public class GameManager : NetworkBehaviour
         player.Hand.Remove(card);
         player.Discard.Add(card);
 
-        _gameState.EnqueueCard(playerId, card);
+        _gameState.EnqueueCard(playerId, card, wasUpcast: upcast);
 
         AwardSilver(player, 2, "card queued");
 
@@ -434,7 +448,6 @@ public class GameManager : NetworkBehaviour
     {
         while (_gameState.MergedQueue.Count > 0)
         {
-            // Broadcast first so client sees the current card highlighted
             StateRelay.Instance.BroadcastToAll();
             yield return new WaitForSeconds(1.2f);
 
@@ -443,11 +456,14 @@ public class GameManager : NetworkBehaviour
 
             Debug.Log($"[GameManager] Resolving: {entry.Card} (owner: Player {entry.OwnerId}, speed: {entry.CurrentSpeed})");
 
-            var effect = CardEffectRegistry.Instance.GetEffect(entry.Card.EffectId);
+            string resolveEffectId = entry.WasUpcast
+                ? entry.Card.EffectId.Replace("_base", "") + "_upcast"
+                : entry.Card.EffectId;
+            var effect = CardEffectRegistry.Instance.GetEffect(resolveEffectId);
             effect?.Apply(entry, _gameState);
 
             // Totem of Progress — draw 1 if card was upcast
-            if (entry.Card.WasUpcast)
+            if (entry.WasUpcast)
             {
                 var caster = _gameState.GetPlayer(entry.OwnerId);
                 if (caster.Board.Any(p => p.PermanentId == "totem_of_progress"))
@@ -459,6 +475,15 @@ public class GameManager : NetworkBehaviour
 
             StateRelay.Instance.BroadcastToAll();
             yield return new WaitForSeconds(0.8f);
+
+            // Check for game over after every resolution — don't allow subsequent cards to undo a kill
+            if (_gameState.GameOver)
+            {
+                Debug.Log("[GameManager] Game over detected mid-resolution — stopping queue.");
+                RevealAllFog();
+                StateRelay.Instance.BroadcastToAll();
+                yield break;
+            }
         }
 
         Debug.Log("[GameManager] Queue resolution complete.");
@@ -507,6 +532,7 @@ public class GameManager : NetworkBehaviour
             if (permanent.TurnsRemaining <= 0)
             {
                 Debug.Log($"[GameManager] {permanent.DisplayName} expired for Player {player.PlayerId}.");
+                if (permanent.SourceCard != null) { player.Discard.Add(permanent.SourceCard); }
                 player.Board.RemoveAt(i);
             }
         }
@@ -653,6 +679,7 @@ public class GameManager : NetworkBehaviour
         player.HP = Mathf.Max(player.HP, 0);
         player.BloodSpentThisTurn += bloodCost;
         Debug.Log($"[GameManager] Player {player.PlayerId} paid {cost.Daggers} Daggers, {bloodCost} Blood.");
+        _gameState.CheckWinCondition();
     }
 
     [Server]
@@ -773,9 +800,10 @@ public class GameManager : NetworkBehaviour
                     HandleUnlockNode(agent, selectionId);
                 break;
             case RoguelikeCategory.Power:
+                Debug.Log($"[GameManager] Player {playerId} chose {category} upgrade: {selectionId} [Reached Power tab in the one switch statement");
+                break;
             case RoguelikeCategory.Strategy:
-                // Phase 5: apply upgrade from pool using selectionId
-                Debug.Log($"[GameManager] Player {playerId} chose {category} upgrade: {selectionId} (stub).");
+                Debug.Log($"[GameManager] Player {playerId} chose {category} upgrade: {selectionId} [Reached Strategy tab in the one switch statement].");
                 break;
         }
 
@@ -789,6 +817,7 @@ public class GameManager : NetworkBehaviour
             AdvancePhase();
         }
     }
+
     [Server]
     public void HandleChooseInsight(PlayerNetworkAgent agent)
     {
@@ -812,6 +841,7 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"[GameManager] Player {playerId} committed to INSIGHT. Sight: {player.InsightTree.SightBanked}");
         StateRelay.Instance.BroadcastToAll();
     }
+
     [Server]
     public void HandleSubmitRoguelikeChoice(PlayerNetworkAgent agent)
     {
@@ -903,6 +933,8 @@ public class GameManager : NetworkBehaviour
 
         Debug.Log($"[GameManager] Player {playerId} submitted event choice: {choice}");
 
+        StateRelay.Instance.BroadcastToAll();
+
         if (effect.IsResolved(_gameState))
         {
             effect.Apply(_gameState);
@@ -921,8 +953,10 @@ public class GameManager : NetworkBehaviour
 
         offers.PowerOffers.Clear();
         offers.PowerPrices.Clear();
+        offers.PowerDisplayNames.Clear();
         offers.StrategyOffers.Clear();
         offers.StrategyPrices.Clear();
+        offers.StrategyDisplayNames.Clear();
 
         var powerPool = pool.GetPowerPool(characterId);
         var strategyPool = pool.GetStrategyPool(characterId);
@@ -1151,7 +1185,7 @@ public class GameManager : NetworkBehaviour
         offer.HpRegenLargeCost = ShopPricing.Roll(rng, ShopPricing.HpRegenLarge);
         offer.SightSmallCost = ShopPricing.Roll(rng, ShopPricing.SightSmall);
         offer.SightLargeCost = ShopPricing.Roll(rng, ShopPricing.SightLarge);
-        offer.PersistentResourceCost = ShopPricing.Roll(rng, ShopPricing.PersistentResource);
+        offer.PerTurnResourceCost = ShopPricing.Roll(rng, ShopPricing.PerTurnResource);
 
         return offer;
     }
@@ -1250,11 +1284,11 @@ public class GameManager : NetworkBehaviour
                 offer.SightLargeCost = -1;
                 break;
 
-            case ShopPurchaseType.PersistentResource:
-                if (player.Silver < offer.PersistentResourceCost) { LogCannotAfford(playerId, "PersistentResource"); return; }
-                player.Resources.PersistentResource += 3; // TBD: amount per character
-                player.Silver -= offer.PersistentResourceCost;
-                offer.PersistentResourceCost = -1;
+            case ShopPurchaseType.PerTurnResource:
+                if (player.Silver < offer.PerTurnResourceCost) { LogCannotAfford(playerId, "PersistentResource"); return; }
+                player.Resources.PerTurnResource += 1;
+                player.Silver -= offer.PerTurnResourceCost;
+                offer.PerTurnResourceCost = -1;
                 break;
         }
 
@@ -1273,6 +1307,14 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
+        var player = _gameState.GetPlayer(playerId);
+        if (player.ShopDoneSubmitted)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} already submitted ShopDone.");
+            return;
+        }
+
+        player.ShopDoneSubmitted = true;
         _shopVotes++;
         Debug.Log($"[GameManager] Player {playerId} done shopping. Votes: {_shopVotes}/2");
 
@@ -1363,6 +1405,8 @@ public class GameManager : NetworkBehaviour
 
         Debug.Log($"[GameManager] Player {playerId} submitted auction bids: {bids[0]}, {bids[1]}, {bids[2]}");
 
+        StateRelay.Instance.BroadcastToAll();
+
         if (auction.Player0Submitted && auction.Player1Submitted)
         {
             ResolveAuction();
@@ -1407,6 +1451,7 @@ public class GameManager : NetworkBehaviour
                 case "bleed":
                     player.TakeDamage(effect.Value);
                     Debug.Log($"[GameManager] Player {player.PlayerId} took {effect.Value} bleed damage.");
+                    _gameState.CheckWinCondition();
                     break;
                 case "multiculta_daggers":
                     player.Resources.PerTurnResource += effect.Value;

@@ -70,6 +70,8 @@ namespace FogClouds
         //Set to true when this player has submitted their roguelike upgrade choice.
         public bool UpgradeChoiceSubmitted;
 
+        public bool ShopDoneSubmitted;
+
         public bool PowerCategoryCommitted;
         public bool StrategyCategoryCommitted;
         public bool InsightCategoryCommitted;
@@ -119,6 +121,7 @@ namespace FogClouds
 
             ReadyToEndTurn = false;
             UpgradeChoiceSubmitted = false;
+            ShopDoneSubmitted = false;
             PowerCategoryCommitted = false;
             InsightCategoryCommitted = false;
             StrategyCategoryCommitted = false;
@@ -141,6 +144,7 @@ namespace FogClouds
             if (!ShieldCarriesOver) Shield = 0;
             ReadyToEndTurn = false;
             UpgradeChoiceSubmitted = false;
+            ShopDoneSubmitted = false;
             PowerCategoryCommitted = false;
             InsightCategoryCommitted = false;
             StrategyCategoryCommitted = false;

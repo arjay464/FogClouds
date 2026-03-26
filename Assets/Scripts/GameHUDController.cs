@@ -47,7 +47,7 @@ public class GameHUDController : MonoBehaviour
     private VisualElement _opponentHpBarFill;
     private Label _opponentHpLabel;
     private Label _opponentShieldLabel;
-    private Label _opponentHandCount;
+    private Button _opponentHandBtn;
     private Label _opponentDeckCount;
     private Label _opponentDiscardCount;
     private Label _opponentDaggersLabel;
@@ -107,6 +107,8 @@ public class GameHUDController : MonoBehaviour
     private VisualElement _eventContent;
     private Label _eventWaitingLabel;
 
+    private string _fortuneOwnChoice;
+
 
     private Dictionary<string, CharacterData> _characterCache = new();
 
@@ -143,7 +145,7 @@ public class GameHUDController : MonoBehaviour
         _opponentHpBarFill = _root.Q<VisualElement>("opponent-hp-bar-fill");
         _opponentHpLabel = _root.Q<Label>("opponent-hp-label");
         _opponentShieldLabel = _root.Q<Label>("opponent-shield-label");
-        _opponentHandCount = _root.Q<Label>("opponent-hand-count");
+        _opponentHandBtn = _root.Q<Button>("opponent-hand-btn");
         _opponentDeckCount = _root.Q<Label>("opponent-deck-count");
         _opponentDiscardCount = _root.Q<Label>("opponent-discard-count");
         _opponentDaggersLabel = _root.Q<Label>("opponent-daggers-label");
@@ -192,6 +194,7 @@ public class GameHUDController : MonoBehaviour
         _insightButton.clicked += OnInsightClicked;
         _passiveButton.clicked += OnPassiveClicked;
         _auctionSubmitBtn.clicked += OnAuctionSubmit;
+        _opponentHandBtn.clicked += OnOpponentHandClicked;
 
         //Buttons
         _root.Q<Button>("insight-overlay-close").clicked += () =>
@@ -213,6 +216,9 @@ public class GameHUDController : MonoBehaviour
             if (_treeOpenedByRoguelike)
             {
                 _treeOpenedByRoguelike = false;
+                _categoryButtons.style.display = DisplayStyle.None;
+                _cardOfferButtons.style.display = DisplayStyle.None;
+                _roguelikeWaiting.style.display = DisplayStyle.Flex;
                 PlayerNetworkAgent.LocalAgent?.CmdSubmitRoguelikeChoice();
             }
         };
@@ -268,6 +274,12 @@ public class GameHUDController : MonoBehaviour
 
     private void DoRefresh(ClientGameStateView view)
     {
+
+        if (view.GameOver)
+        {
+            ShowGameOverScreen(view);
+            return;
+        }
 
         var own = view.OwnState;
         if (own == null) return;
@@ -400,7 +412,7 @@ public class GameHUDController : MonoBehaviour
                 var row = new VisualElement();
                 row.AddToClassList("queue-entry");
 
-                var nameLabel = new Label(entry.Card.DisplayName);
+                var nameLabel = new Label(entry.WasUpcast ? $"{entry.Card.DisplayName} ★" : entry.Card.DisplayName);
                 nameLabel.AddToClassList("queue-entry-name");
 
                 var speedLabel = new Label($"SPD {entry.CurrentSpeed}");
@@ -435,7 +447,7 @@ public class GameHUDController : MonoBehaviour
                 bool isOwn = entry.OwnerId == myPlayerId;
                 row.AddToClassList(isOwn ? "queue-entry-own" : "queue-entry-opponent");
 
-                var nameLabel = new Label(entry.Card.DisplayName);
+                var nameLabel = new Label(entry.WasUpcast ? $"{entry.Card.DisplayName} ★" : entry.Card.DisplayName);
                 nameLabel.AddToClassList("queue-entry-name");
 
                 var speedLabel = new Label($"SPD {entry.CurrentSpeed}");
@@ -557,7 +569,7 @@ public class GameHUDController : MonoBehaviour
         _opponentShieldLabel.text = opp.Shield > 0 ? $"{opp.Shield}" : "";
 
         // Hand / Deck / Discard counts
-        _opponentHandCount.text = opp.HandSize >= 0 ? opp.HandSize.ToString() : "?";
+        _opponentHandBtn.text = opp.HandSize >= 0 ? opp.HandSize.ToString() : "?";
         _opponentDeckCount.text = opp.DeckCount >= 0 ? opp.DeckCount.ToString() : "?";
         _opponentDiscardCount.text = opp.DiscardCount >= 0 ? opp.DiscardCount.ToString() : "?";
 
@@ -573,13 +585,11 @@ public class GameHUDController : MonoBehaviour
             _opponentPersistentLabel.text = "Persistent: ?";
         }
 
-        // Sight — comes from InsightTree, separate fog flag
         _opponentSightLabel.text = opp.InsightTree != null
             ? $"Sight: {opp.InsightTree.SightBanked}"
             : "Sight: ?";
 
-        // Silver is never revealed
-        _opponentSilverLabel.text = "Silver: ?";
+        _opponentSilverLabel.text = opp.Silver >= 0 ? $"Silver: {opp.Silver}" : "Silver: ?";
     }
     private void OpenInsightTab(int tab)
     {
@@ -794,6 +804,18 @@ public class GameHUDController : MonoBehaviour
             return;
         }
         OpenPileViewer("Opponent Discard Pile", discard, ordered: true);
+    }
+
+    private void OnOpponentHandClicked()
+    {
+        var view = ClientStateManager.Instance?.CurrentState;
+        var hand = view?.OpponentState?.Hand;
+        if (hand == null)
+        {
+            OpenPileViewerLocked("Opponent Hand", "Hand contents not yet revealed.");
+            return;
+        }
+        OpenPileViewer("Opponent Hand", hand, ordered: true);
     }
 
     private void OpenPileViewer(string title, List<CardInstanceView> cards, bool ordered)
@@ -1267,8 +1289,8 @@ public class GameHUDController : MonoBehaviour
                 () => PlayerNetworkAgent.LocalAgent?.CmdShopPurchase(ShopPurchaseType.SightSmall, 0));
             AddServiceSlot("Sight (Large)", "+5 Sight", offer.SightLargeCost, silver,
                 () => PlayerNetworkAgent.LocalAgent?.CmdShopPurchase(ShopPurchaseType.SightLarge, 0));
-            AddServiceSlot("Persistent Resource", "+3 Persistent", offer.PersistentResourceCost, silver,
-                () => PlayerNetworkAgent.LocalAgent?.CmdShopPurchase(ShopPurchaseType.PersistentResource, 0));
+            AddServiceSlot("Per Turn Resource", "+1 Per Turn", offer.PerTurnResourceCost, silver,
+                () => PlayerNetworkAgent.LocalAgent?.CmdShopPurchase(ShopPurchaseType.PerTurnResource, 0));
         });
     }
 
@@ -1440,7 +1462,7 @@ public class GameHUDController : MonoBehaviour
     {
         bool isEvent = view.CurrentPhase == TurnPhase.EventPhase;
         _eventPanel.style.display = isEvent ? DisplayStyle.Flex : DisplayStyle.None;
-        if (!isEvent) return;
+        if (!isEvent) { _fortuneOwnChoice = null; return; }
 
         string eventId = view.CurrentEventId;
         if (string.IsNullOrEmpty(eventId)) return;
@@ -1449,7 +1471,14 @@ public class GameHUDController : MonoBehaviour
 
         bool submitted = view.OwnChoiceSubmitted;
         _eventWaitingLabel.style.display = submitted ? DisplayStyle.Flex : DisplayStyle.None;
-        if (submitted) return;
+        if (submitted)
+        {
+            if (view.CurrentEventId == "fortune_favors_the_bold" && view.EventOutcome != null)
+                BuildFortuneResultUI(view);  // show outcome instead of generic waiting
+            else
+                _eventWaitingLabel.style.display = DisplayStyle.Flex;
+            return;
+        }
 
         _eventContent.schedule.Execute(() =>
         {
@@ -1698,33 +1727,151 @@ public class GameHUDController : MonoBehaviour
 
     private void BuildFortuneUI(ClientGameStateView view)
     {
-        _eventDescLabel.text = "Spin the wheel. Win your bet in HP. Lose and you pay the price. You must gamble.";
+        _eventDescLabel.text = "Choose your wager and color. The wheel decides all.";
 
-        var bets = new[] { ("5", "5 HP"), ("10", "10 HP"), ("20", "20 HP"), ("50", "50 HP") };
-        var betRow = new VisualElement();
-        betRow.style.flexDirection = FlexDirection.Row;
-        betRow.style.justifyContent = Justify.Center;
-        _eventContent.Add(betRow);
+        // Amount buttons
+        var amountLabel = new Label("Wager Amount:");
+        amountLabel.AddToClassList("shop-item-name");
+        _eventContent.Add(amountLabel);
 
-        foreach (var (id, label) in bets)
+        var amountRow = new VisualElement();
+        amountRow.style.flexDirection = FlexDirection.Row;
+        amountRow.style.marginBottom = 8;
+        _eventContent.Add(amountRow);
+
+        int selectedAmount = 5;
+        Button activeAmountBtn = null;
+
+        var amounts = new[] { ("5", "5 HP"), ("10", "10 HP"), ("20", "20 HP"), ("50", "50 HP") };
+        var amountBtns = new List<Button>();
+        foreach (var (id, label) in amounts)
         {
-            string betId = id;
-            var item = new VisualElement();
-            item.AddToClassList("shop-item");
-            item.style.minWidth = 100;
-            item.style.alignItems = Align.Center;
-
-            var nameLabel = new Label(label);
-            nameLabel.AddToClassList("shop-item-name");
-            item.Add(nameLabel);
-
+            string amountId = id;
             var btn = new Button();
             btn.AddToClassList("shop-buy-btn");
-            btn.text = "Bet";
-            btn.clicked += () => PlayerNetworkAgent.LocalAgent?.CmdSubmitEventChoice(betId);
-            item.Add(btn);
-
-            betRow.Add(item);
+            btn.text = label;
+            btn.clicked += () =>
+            {
+                selectedAmount = int.Parse(amountId);
+                foreach (var b in amountBtns) b.RemoveFromClassList("fortune-selected");
+                btn.AddToClassList("fortune-selected");
+                activeAmountBtn = btn;
+            };
+            amountBtns.Add(btn);
+            amountRow.Add(btn);
         }
+        // Default select 5
+        amountBtns[0].AddToClassList("fortune-selected");
+
+        // Color buttons
+        var colorLabel = new Label("Choose Color:");
+        colorLabel.AddToClassList("shop-item-name");
+        _eventContent.Add(colorLabel);
+
+        var colorRow = new VisualElement();
+        colorRow.style.flexDirection = FlexDirection.Row;
+        colorRow.style.marginBottom = 12;
+        _eventContent.Add(colorRow);
+
+        string selectedColor = "red";
+        var colorBtns = new List<Button>();
+
+        foreach (var color in new[] { "red", "black" })
+        {
+            string c = color;
+            var btn = new Button();
+            btn.AddToClassList("shop-buy-btn");
+            btn.AddToClassList($"fortune-color-{c}");
+            btn.text = char.ToUpper(c[0]) + c.Substring(1);
+            btn.clicked += () =>
+            {
+                selectedColor = c;
+                foreach (var b in colorBtns) b.RemoveFromClassList("fortune-selected");
+                btn.AddToClassList("fortune-selected");
+            };
+            colorBtns.Add(btn);
+            colorRow.Add(btn);
+        }
+        colorBtns[0].AddToClassList("fortune-selected");
+
+        var confirmBtn = new Button();
+        confirmBtn.AddToClassList("shop-done-btn");
+        confirmBtn.text = "Lock In";
+        confirmBtn.clicked += () =>
+        {
+            string choice = $"{selectedAmount}:{selectedColor}";
+            _fortuneOwnChoice = choice;
+            PlayerNetworkAgent.LocalAgent?.CmdSubmitEventChoice(choice);
+        };
+        _eventContent.Add(confirmBtn);
+    }
+    private void BuildFortuneResultUI(ClientGameStateView view)
+    {
+        _eventWaitingLabel.style.display = DisplayStyle.None;
+        _eventContent.schedule.Execute(() =>
+        {
+            _eventContent.Clear();
+
+            // Wheel result display
+            string outcome = view.EventOutcome;
+            var resultLabel = new Label($"The wheel lands on... {outcome.ToUpper()}!");
+            resultLabel.AddToClassList($"fortune-result-{outcome}");
+            resultLabel.style.fontSize = 20;
+            resultLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+            resultLabel.style.marginBottom = 12;
+            _eventContent.Add(resultLabel);
+
+            // Show each player's outcome
+            var ownChoice = view.OwnState != null
+                ? ParseFortuneChoice(view)
+                : null;
+            if (ownChoice.HasValue)
+            {
+                bool won = ownChoice.Value.color == outcome;
+                var outcomeLabel = new Label(won
+                    ? $"You bet {ownChoice.Value.color.ToUpper()} for {ownChoice.Value.amount} HP — YOU WIN!"
+                    : $"You bet {ownChoice.Value.color.ToUpper()} for {ownChoice.Value.amount} HP — YOU LOSE.");
+                outcomeLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+                outcomeLabel.style.color = won
+                    ? new StyleColor(new Color(0.4f, 0.9f, 0.4f))
+                    : new StyleColor(new Color(0.9f, 0.3f, 0.3f));
+                _eventContent.Add(outcomeLabel);
+            }
+        });
+    }
+
+    private (int amount, string color)? ParseFortuneChoice(ClientGameStateView view)
+    {
+        if (string.IsNullOrEmpty(_fortuneOwnChoice)) return null;
+        var parts = _fortuneOwnChoice.Split(':');
+        if (parts.Length != 2) return null;
+        return (int.Parse(parts[0]), parts[1]);
+    }
+
+    private void ShowGameOverScreen(ClientGameStateView view)
+    {
+        // Reuse the pile overlay as a simple modal — it's already a full-screen dark overlay
+        _pileOverlay.style.display = DisplayStyle.Flex;
+
+        // Hide the close button so they can't dismiss it
+        _root.Q<Button>("pile-overlay-close").style.display = DisplayStyle.None;
+
+        _pileOverlayTitle.text = view.WinnerPlayerId == view.OwnState?.PlayerId
+            ? "Victory"
+            : "Defeat";
+
+        _pileContent.schedule.Execute(() =>
+        {
+            _pileContent.Clear();
+
+            var msg = new Label(view.WinnerPlayerId == view.OwnState?.PlayerId
+                ? "You have won the match."
+                : "You have been defeated.");
+            msg.style.fontSize = 16;
+            msg.style.unityTextAlign = TextAnchor.MiddleCenter;
+            msg.style.color = new StyleColor(new Color(0.85f, 0.85f, 0.9f));
+            msg.style.marginTop = 20;
+            _pileContent.Add(msg);
+        });
     }
 }

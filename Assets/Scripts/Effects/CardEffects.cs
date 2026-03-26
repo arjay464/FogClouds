@@ -127,6 +127,7 @@ namespace FogClouds
         {
             PlayerState player = state.GetPlayer(source.OwnerId);
             BoardPermanent permanent = CreatePermanent(source.OwnerId);
+            permanent.SourceCard = source.Card;
             player.Board.Add(permanent);
             Debug.Log($"[SpawnPermanentEffect] Player {source.OwnerId} spawned {DisplayName}.");
         }
@@ -202,6 +203,13 @@ namespace FogClouds
     // HemorrhageEffect — deals damage equal to blood spent this turn by the caster
     public class HemorrhageEffect : ICardEffect
     {
+        public bool Lifesteal;
+
+        public HemorrhageEffect(bool lifesteal = false)
+        {
+            Lifesteal = lifesteal;
+        }
+
         public void Apply(QueueEntry source, GameState state)
         {
             var attacker = state.GetPlayer(source.OwnerId);
@@ -211,7 +219,7 @@ namespace FogClouds
                 Debug.Log($"[HemorrhageEffect] No blood spent this turn — 0 damage.");
                 return;
             }
-            var singleHit = new DealDamageEffect(damage);
+            var singleHit = new DealDamageEffect(damage, lifesteal: Lifesteal);
             singleHit.Apply(source, state);
             Debug.Log($"[HemorrhageEffect] Dealt {damage} damage based on blood spent.");
         }
@@ -220,12 +228,20 @@ namespace FogClouds
     // BloodrushEffect — deals 4 damage, or 8 if caster is below half HP
     public class BloodrushEffect : ICardEffect
     {
+
+        public bool Lifesteal;
+
+        public BloodrushEffect(bool lifesteal = false)
+        {
+            lifesteal = Lifesteal;
+        }
+
         public void Apply(QueueEntry source, GameState state)
         {
             var attacker = state.GetPlayer(source.OwnerId);
             bool belowHalf = attacker.HP < attacker.Character.BaseHP / 2f;
             int damage = belowHalf ? 8 : 4;
-            var hit = new DealDamageEffect(damage);
+            var hit = new DealDamageEffect(damage, lifesteal: Lifesteal);
             hit.Apply(source, state);
             Debug.Log($"[BloodrushEffect] Dealt {damage} damage (below half: {belowHalf}).");
         }
@@ -271,7 +287,8 @@ namespace FogClouds
         public void Apply(QueueEntry source, GameState state)
         {
             var player = state.GetPlayer(source.OwnerId);
-            player.Board.Add(new TotemOfSharpness(source.OwnerId, bonusDamage: 3, turnsRemaining: 2));
+            var totem = new TotemOfSharpness(source.OwnerId, bonusDamage: 3, turnsRemaining: 2) { SourceCard = source.Card };
+            player.Board.Add(totem);
             Debug.Log($"[TotemOfSharpnessEffect] Player {source.OwnerId} spawned Totem of Sharpness.");
         }
     }
@@ -352,7 +369,8 @@ namespace FogClouds
         public void Apply(QueueEntry source, GameState state)
         {
             var player = state.GetPlayer(source.OwnerId);
-            player.Board.Add(new TotemOfSacrifice(source.OwnerId));
+            var totem = new TotemOfSacrifice(source.OwnerId) { SourceCard = source.Card };
+            player.Board.Add(totem);
             Debug.Log($"[TotemOfSacrificeEffect] Player {source.OwnerId} spawned Totem of Sacrifice.");
         }
     }
@@ -416,7 +434,8 @@ namespace FogClouds
         public void Apply(QueueEntry source, GameState state)
         {
             var player = state.GetPlayer(source.OwnerId);
-            player.Board.Add(new TotemOfProgress(source.OwnerId, turnsRemaining: 3));
+            var totem = new TotemOfProgress(source.OwnerId, turnsRemaining: 3) { SourceCard = source.Card };
+            player.Board.Add(totem);
             Debug.Log($"[TotemOfProgressEffect] Player {source.OwnerId} spawned Totem of Progress.");
         }
     }

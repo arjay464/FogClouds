@@ -36,11 +36,11 @@ public class CardEffectRegistry : MonoBehaviour
         _effects["twin_strike_upcast"] = new MultiHitEffect(hitCount: 2, damagePerHit: 2, lifesteal: true);
         _effects["ferravallum"] = new GainShieldEffect(5);
         _effects["cursed_goblet_card"] = new SpawnPermanentEffect("cursed_goblet", "Cursed Goblet", turnsRemaining: -1);
-        _effects["hemorrhage"] = new HemorrhageEffect();
-        _effects["bloodrush"] = new BloodrushEffect();
+        _effects["hemorrhage_base"] = new HemorrhageEffect();
+        _effects["hemorrhage_upcast"] = new HemorrhageEffect();
+        _effects["bloodrush_base"] = new BloodrushEffect();
         _effects["bloodrush_upcast"] = new BloodrushEffect(); // upcast version doubles via IsAttack flag
         _effects["arterial_cut"] = new ArterialCutEffect();
-        _effects["arterial_cut_upcast"] = new ArterialCutEffect(); // two stacks applied by upcast handler
         _effects["hidden_daggers"] = new HiddenDaggersEffect();
         _effects["totem_of_sharpness"] = new TotemOfSharpnessEffect();
         _effects["daggers_in_the_dark"] = new DaggersInTheDarkEffect();

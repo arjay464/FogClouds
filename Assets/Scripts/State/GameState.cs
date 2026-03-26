@@ -47,6 +47,9 @@ namespace FogClouds
         // Temporary storage for Writing on the Wall revealed cards, indexed by player
         public List<CardInstance>[] EventRevealedCards;
 
+        //For events that have outcomes (e.g. Fortune Favors the Bold)
+        public string EventOutcome; //set at EnterEventPhase
+
         private int _nextInstanceId = 10000;
         public int GenerateInstanceId() => _nextInstanceId++;
 
@@ -84,6 +87,8 @@ namespace FogClouds
             Player0ShopOffer = new ShopOffer();
             Player1ShopOffer = new ShopOffer();
 
+            EventRevealedCards = new List<CardInstance>[2];
+
             CurrentPhase = TurnPhase.TurnStart;
             TurnNumber = 1;
             GameOver = false;
@@ -116,7 +121,7 @@ namespace FogClouds
 
         // Adds a card to the specified player's queue and re-sorts by speed (descending).
         // Called during MainPhase when a player plays a Queueable card.
-        public void EnqueueCard(int playerId, CardInstance card)
+        public void EnqueueCard(int playerId, CardInstance card, bool wasUpcast = false)
         {
             var queue = GetQueue(playerId);
             var player = GetPlayer(playerId);
@@ -144,7 +149,7 @@ namespace FogClouds
             {
                 TieBreaker = Rng.Next(),
                 BonusDamage = bonusDamage,
-                WasUpcast = card.WasUpcast
+                WasUpcast = wasUpcast
             };
 
             queue.Add(entry);
@@ -222,6 +227,8 @@ namespace FogClouds
             var destroyer = GetPlayer(destroyerPlayerId);
 
             if (!owner.Board.Remove(target)) return;
+
+            if (target.SourceCard != null) { owner.Discard.Add(target.SourceCard); }
 
             destroyer.Silver += 3;
 

@@ -284,40 +284,55 @@ public class WritingOnTheWallEffect : IGameEventEffect
 public class FortuneFavorsTheBoldEffect : IGameEventEffect
 {
     public bool IsInteractive => true;
-    public void Apply(GameState state) { }
+    public void Apply(GameState state) { }  // unused — resolution is in ApplyChoice on second submission
 
     public bool ValidateChoice(GameState state, int playerId, string choice, out string reason)
     {
         reason = null;
-        var valid = new[] { "5", "10", "20", "50" };
-        if (!valid.Contains(choice)) { reason = "Bet must be 5, 10, 20, or 50."; return false; }
+        var parts = choice.Split(':');
+        if (parts.Length != 2) { reason = "Choice must be in format 'amount:color'."; return false; }
 
-        int bet = int.Parse(choice);
-        var player = state.GetPlayer(playerId);
-        // Minimum bet is 5 — always must gamble regardless of HP
-        // (if below 5 HP, the minimum 5 bet applies and they risk dying)
+        var validAmounts = new[] { "5", "10", "20", "50" };
+        if (!validAmounts.Contains(parts[0])) { reason = "Bet must be 5, 10, 20, or 50."; return false; }
+
+        if (parts[1] != "red" && parts[1] != "black") { reason = "Color must be red or black."; return false; }
+
         return true;
     }
 
     public void ApplyChoice(GameState state, int playerId, string choice)
     {
-        int bet = int.Parse(choice);
-        var player = state.GetPlayer(playerId);
+        // Just store — resolve when both players have chosen
+        if (!IsResolved(state)) return;
 
-        // 50/50 coin flip
-        bool win = state.Rng.Next(2) == 0;
-        if (win)
+        // Spin the wheel once
+        bool landedRed = state.Rng.Next(2) == 0;
+        string outcome = landedRed ? "red" : "black";
+        state.EventOutcome = outcome;
+
+        Debug.Log($"[FortuneFavorsTheBold] Wheel landed on {outcome}.");
+
+        for (int i = 0; i < 2; i++)
         {
-            int heal = Mathf.Min(bet, player.Character.BaseHP - player.HP);
-            player.HP += heal;
-            Debug.Log($"[FortuneFavorsTheBold] Player {playerId} WON bet of {bet} — healed {heal} HP.");
+            var parts = state.PlayerEventChoices[i].Split(':');
+            int bet = int.Parse(parts[0]);
+            string color = parts[1];
+            var player = state.GetPlayer(i);
+
+            if (color == outcome)
+            {
+                int heal = Mathf.Min(bet, player.Character.BaseHP - player.HP);
+                player.HP += heal;
+                Debug.Log($"[FortuneFavorsTheBold] Player {i} picked {color} — WON, healed {heal} HP.");
+            }
+            else
+            {
+                player.HP = Mathf.Max(0, player.HP - bet);
+                Debug.Log($"[FortuneFavorsTheBold] Player {i} picked {color} — LOST {bet} HP.");
+            }
         }
-        else
-        {
-            player.HP = Mathf.Max(0, player.HP - bet);
-            Debug.Log($"[FortuneFavorsTheBold] Player {playerId} LOST bet of {bet}.");
-            state.CheckWinCondition();
-        }
+
+        state.CheckWinCondition();
     }
 
     public bool IsResolved(GameState state) =>
