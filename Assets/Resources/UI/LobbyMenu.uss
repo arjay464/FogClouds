@@ -21,3 +21,33 @@
     font-size: 14px;
     color: rgb(180, 180, 180);
 }
+
+#local-host-button {
+    width: 200px;
+    height: 48px;
+    font-size: 18px;
+    margin-bottom: 16px;
+    background-color: rgb(60, 60, 60);
+    color: rgb(180, 180, 180);
+    border-color: rgb(100, 100, 100);
+}
+
+#local-join-button {
+    width: 200px;
+    height: 48px;
+    font-size: 18px;
+    margin-bottom: 16px;
+    background-color: rgb(60, 60, 60);
+    color: rgb(180, 180, 180);
+    border-color: rgb(100, 100, 100);
+}
+
+#local-ip-field {
+    width: 200px;
+    height: 28px;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: rgb(180, 180, 180);
+    background-color: rgb(40, 40, 40);
+    border-color: rgb(100, 100, 100);
+}

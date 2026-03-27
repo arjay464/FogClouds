@@ -19,4 +19,9 @@ public class FogCloudsNetworkManager : NetworkManager
         _addedPlayers.Remove(conn);
         base.OnServerDisconnect(conn);
     }
+    public override void OnStartHost()
+    {
+        base.OnStartHost();
+        Debug.Log("[FogCloudsNetworkManager] Host started successfully.");
+    }
 }

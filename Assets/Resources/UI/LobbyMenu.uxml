@@ -1,7 +1,10 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="lobby-root">
         <ui:Label name="title-label" text="FogClouds" />
-        <ui:Button name="host-button" text="Host Game" />
+        <ui:Button name="host-button" text="Host (Steam)" />
+        <ui:Button name="local-host-button" text="Local Host" />
+        <ui:Button name="local-join-button" text="Local Join" />
+        <ui:TextField name="local-ip-field" value="localhost" />
         <ui:Label name="status-label" text="" />
     </ui:VisualElement>
 </ui:UXML>
