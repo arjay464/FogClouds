@@ -1,0 +1,1062 @@
+/* ── Top Bar ─────────────────────────────────────────────────── */
+.top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(67, 67, 67, 0.85);
+    border-bottom-width: 1px;
+    border-color: rgba(80, 80, 100, 0.4);
+}
+
+.phase-label {
+    color: rgb(200, 200, 220);
+    font-size: 14px;
+    -unity-font-style: bold;
+    margin-right: 24px;
+}
+
+.turn-label {
+    color: rgb(130, 130, 150);
+    font-size: 12px;
+}
+/* ── Opponent Bar ────────────────────────────────────────────── */
+.opponent-bar {
+    position: absolute;
+    top: 32px;
+    left: 0;
+    right: 0;
+    height: 52px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(30, 30, 40, 0.9);
+    border-bottom-width: 1px;
+    border-color: rgba(80, 80, 100, 0.4);
+    padding: 4px 8px;
+}
+
+.opponent-character-block {
+    flex-direction: row;
+    align-items: center;
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.opponent-portrait {
+    width: 36px;
+    height: 36px;
+    background-color: rgba(40, 40, 55, 0.9);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgba(80, 80, 110, 0.5);
+    margin-right: 6px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.opponent-portrait-label {
+    color: rgba(140, 140, 160, 0.8);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.opponent-vitals-block {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.opponent-name-label {
+    color: rgb(160, 160, 180);
+    font-size: 10px;
+    -unity-font-style: bold;
+    margin-bottom: 2px;
+}
+
+.opponent-counts {
+    flex: 1;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.opponent-count-block {
+    align-items: center;
+    margin: 0 12px;
+}
+
+.opponent-count-value {
+    color: rgb(200, 200, 220);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.opponent-count-label {
+    color: rgba(140, 140, 160, 0.7);
+    font-size: 7px;
+    margin-top: 1px;
+}
+
+.opponent-resources {
+    flex-direction: column;
+    justify-content: center;
+    flex-shrink: 0;
+    padding-left: 8px;
+    margin-right: 148px;
+}
+
+.opponent-resource-row {
+    flex-direction: row;
+    margin-bottom: 2px;
+}
+
+.opponent-resource-label {
+    color: rgb(140, 140, 160);
+    font-size: 9px;
+    margin-right: 10px;
+}
+
+.board-area {
+    position: absolute;
+    top: 84px;
+    left: 0;
+    right: 0;
+    bottom: 260px;   
+    flex-direction: column;
+}
+
+.board-zone {
+    flex: 1;
+    flex-direction: row;
+    align-items: flex-start;
+    align-content: flex-start;
+    flex-wrap: wrap;
+    overflow: hidden;
+    border-bottom-width: 1px;
+    border-color: rgba(80, 80, 100, 0.3);
+    background-color: rgba(20, 20, 30, 0.4);
+    padding: 6px 8px;
+}
+
+.own-board-zone {
+    max-height: none; 
+}
+
+.opponent-board-zone {
+    align-items: flex-start;
+    align-content: flex-start;
+    padding: 6px 8px;
+}
+
+.permanent-chip {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(40, 40, 60, 0.95);
+    border-width: 1px;
+    border-color: rgba(100, 100, 140, 0.6);
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: 3px;
+    min-width: 70px;
+    max-width: 120px;
+}
+
+.permanent-chip-protected {
+    border-color: rgba(100, 160, 220, 0.9);
+    background-color: rgba(30, 50, 80, 0.95);
+}
+
+.permanent-chip-hidden {
+    background-color: rgba(30, 30, 40, 0.7);
+    border-color: rgba(70, 70, 90, 0.5);
+}
+
+.permanent-chip-name {
+    font-size: 9px;
+    color: rgb(200, 200, 220);
+    -unity-font-style: bold;
+    -unity-text-align: upper-center;
+    white-space: normal;
+}
+
+.permanent-chip-duration {
+    font-size: 8px;
+    color: rgb(140, 140, 160);
+    -unity-text-align: upper-center;
+    margin-top: 2px;
+}
+
+.permanent-chip-protected-label {
+    font-size: 7px;
+    color: rgb(100, 160, 220);
+    -unity-text-align: upper-center;
+    margin-top: 1px;
+}
+
+.board-count-badge {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    color: rgb(180, 180, 200);
+    font-size: 11px;
+    background-color: rgba(20, 20, 30, 0.7);
+    padding: 1px 5px;
+    border-radius: 6px;
+}
+
+/* ── Queue Area ──────────────────────────────────────────────── */
+.queue-area {
+    position: absolute;
+    right: 8px;
+    top: 40px;
+    bottom: 168px;
+    width: 140px;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.queue-panel {
+    flex: 1;
+    width: 100%;
+    background-color: rgba(67, 67, 67, 0.6);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgba(80, 80, 110, 0.3);
+    margin-bottom: 4px;
+}
+
+.merged-queue {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    width: 180px;
+    background-color: rgba(15, 15, 30, 0.95);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(100, 100, 140, 0.5);
+}
+
+/* ── Hand Area ───────────────────────────────────────────────── */
+.hand-area {
+    position: absolute;
+    bottom: 130px;
+    left: 200px;
+    right: 160px;
+    height: 130px;
+    flex-direction: row;
+    justify-content: center;
+}
+
+/* ── Passives Shelf: thin horizontal strip under hand ────────── */
+.passives-shelf {
+    position: absolute;
+    bottom: 100px;
+    left: 200px;
+    right: 160px;
+    height: 28px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(40, 40, 50, 0.6);
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-color: rgba(80, 80, 100, 0.3);
+    padding: 2px 6px;
+}
+
+/* ── Bottom Bar ──────────────────────────────────────────────── */
+.bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(50, 50, 52, 0.95);
+    border-top-width: 1px;
+    border-color: rgba(80, 80, 100, 0.5);
+    padding: 6px 8px;
+}
+
+/* ── Draw / Discard Piles ────────────────────────────────────── */
+.pile {
+    width: 44px;
+    height: 62px;
+    background-color: rgba(69, 69, 69, 1);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgba(100, 100, 110, 0.5);
+    margin: 0 6px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pile-count {
+    color: rgb(220, 220, 230);
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.pile-label {
+    color: rgba(160, 160, 170, 0.8);
+    font-size: 8px;
+    margin-top: 2px;
+}
+
+/* ── Character Block ─────────────────────────────────────────── */
+.character-block {
+    flex: 1;
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+    padding: 0 8px;
+}
+
+.portrait {
+    width: 72px;
+    height: 72px;
+    background-color: rgba(43, 24, 12, 1);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(80, 60, 40, 0.6);
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.vitals-block {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* ── Resource Bar: thin strip above HP ───────────────────────── */
+.resource-bar {
+    flex-direction: row;
+    align-items: center;
+    height: 18px;
+    margin-bottom: 4px;
+}
+
+.pip-row {
+    flex-direction: row;
+    margin-right: 8px;
+}
+
+.pip-filled {
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: rgb(190, 150, 40);
+    margin: 1px 2px;
+    border-width: 1px;
+    border-color: rgba(220, 180, 60, 0.5);
+}
+
+.pip-empty {
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: rgba(40, 40, 55, 0.8);
+    margin: 1px 2px;
+    border-width: 1px;
+    border-color: rgba(80, 80, 110, 0.4);
+}
+
+.persistent-value {
+    color: rgb(160, 200, 220);
+    font-size: 11px;
+    margin-right: 10px;
+}
+
+.currency-label {
+    color: rgb(200, 200, 215);
+    font-size: 11px;
+    margin-right: 8px;
+}
+
+/* ── HP Row: bar + shield side by side ───────────────────────── */
+.hp-row {
+    flex-direction: row;
+    align-items: center;
+    height: 22px;
+}
+
+.bar-container {
+    flex: 1;
+    height: 22px;
+    background-color: rgba(30, 30, 40, 0.9);
+    border-radius: 3px;
+    overflow: hidden;
+    border-width: 1px;
+    border-color: rgba(60, 60, 80, 0.4);
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+.hp-fill {
+    background-color: rgb(69, 69, 69);
+    width: 100%;
+    transition-property: width;
+    transition-duration: 0.3s;
+}
+
+.bar-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    color: rgb(220, 220, 230);
+    font-size: 11px;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+}
+
+.shield-label {
+    color: rgb(120, 160, 210);
+    font-size: 11px;
+    margin-left: 6px;
+    width: 36px;
+}
+
+/* ── Action Buttons ──────────────────────────────────────────── */
+.action-buttons {
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding: 4px 0 4px 8px;
+    flex-shrink: 0;
+}
+
+.action-btn {
+    background-color: rgba(69, 69, 69, 1);
+    color: rgb(180, 180, 200);
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(90, 90, 110, 0.6);
+    padding: 3px 8px;
+    font-size: 10px;
+}
+
+.action-btn:hover {
+    background-color: rgba(90, 90, 110, 0.9);
+}
+
+.end-turn-btn {
+    background-color: rgba(120, 30, 30, 0.9);
+    color: rgb(220, 200, 200);
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(160, 50, 50, 0.6);
+    padding: 5px 10px;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.end-turn-btn:hover {
+    background-color: rgba(150, 40, 40, 0.9);
+}
+
+.hand-area {
+    overflow: visible;
+}
+
+.queue-entry {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 6px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.queue-entry-resolving {
+    background-color: rgba(255, 220, 80, 0.25);
+    border-width: 1px;
+    border-color: rgba(255, 220, 80, 0.6);
+}
+
+.queue-entry-own {
+    border-left-width: 2px;
+    border-left-color: rgba(100, 180, 255, 0.8);
+}
+
+.queue-entry-opponent {
+    border-left-width: 2px;
+    border-left-color: rgba(255, 100, 100, 0.8);
+}
+
+.queue-entry-name {
+    font-size: 10px;
+    color: rgb(220, 220, 220);
+    flex-grow: 1;
+}
+
+.queue-entry-speed {
+    font-size: 9px;
+    color: rgb(160, 160, 160);
+    margin-left: 4px;
+}
+.roguelike-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.75);
+    align-items: center;
+    justify-content: center; /* centers vertically */
+}
+
+.roguelike-panel-inner {
+    background-color: rgb(22, 22, 32);
+    border-width: 1px;
+    border-color: rgb(80, 80, 120);
+    border-radius: 6px;
+    padding: 24px;
+    min-width: 500px;
+    max-height: 90%; /* prevent overflow */
+    align-items: center;
+    /* remove any fixed height if you set one */
+}
+
+.roguelike-title {
+    font-size: 20px;
+    color: rgb(200, 200, 220);
+    -unity-font-style: bold;
+    margin-bottom: 20px;
+    -unity-text-align: upper-center;
+}
+
+.category-buttons {
+    flex-direction: row;
+    justify-content: center;
+}
+
+.roguelike-category-btn {
+    font-size: 15px;
+    -unity-font-style: bold;
+    padding: 12px 24px;
+    margin: 6px;
+    border-radius: 4px;
+    min-width: 140px;
+}
+
+.roguelike-power-btn {
+    background-color: rgb(100, 30, 30);
+    border-color: rgb(180, 60, 60);
+    color: rgb(255, 200, 200);
+}
+
+.roguelike-power-btn:hover {
+    background-color: rgb(140, 40, 40);
+}
+
+.roguelike-strategy-btn {
+    background-color: rgb(30, 60, 100);
+    border-color: rgb(60, 120, 180);
+    color: rgb(200, 220, 255);
+}
+
+.roguelike-strategy-btn:hover {
+    background-color: rgb(40, 80, 130);
+}
+
+.roguelike-insight-btn {
+    background-color: rgb(60, 50, 20);
+    border-color: rgb(140, 120, 40);
+    color: rgb(255, 230, 120);
+}
+
+.roguelike-insight-btn:hover {
+    background-color: rgb(80, 70, 25);
+}
+
+.card-offer-buttons {
+    flex-direction: row;
+    justify-content: center;
+}
+
+.card-offer-btn {
+    font-size: 13px;
+    padding: 14px 18px;
+    margin: 6px;
+    border-radius: 4px;
+    min-width: 140px;
+    white-space: normal;
+    background-color: rgb(28, 28, 40);
+    border-color: rgb(80, 80, 120);
+    color: rgb(210, 210, 230);
+    -unity-text-align: upper-center;
+}
+
+.card-offer-btn:hover {
+    background-color: rgb(40, 40, 60);
+    border-color: rgb(120, 120, 180);
+}
+
+.roguelike-waiting {
+    font-size: 14px;
+    color: rgb(120, 120, 140);
+    -unity-font-style: italic;
+    margin-top: 16px;
+}
+.card-facedown {
+    background-color: rgba(30, 30, 50, 0.95);
+    border-color: rgba(80, 80, 120, 0.5);
+}
+.opponent-board-zone {
+    align-items: flex-start;
+    padding: 6px 8px;
+}
+/* ── Overlays shared base ────────────────────────────────────── */
+.insight-overlay,
+.pile-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.75);
+    align-items: center;
+    justify-content: center;
+}
+
+.insight-overlay-inner {
+    background-color: rgb(22, 22, 32);
+    border-width: 1px;
+    border-color: rgb(80, 80, 120);
+    border-radius: 6px;
+    padding: 16px;
+    width: 640px;
+    max-height: 80%;
+    flex-direction: column;
+}
+
+.pile-overlay-inner {
+    background-color: rgb(22, 22, 32);
+    border-width: 1px;
+    border-color: rgb(80, 80, 120);
+    border-radius: 6px;
+    padding: 16px;
+    width: 560px;
+    max-height: 85%;
+}
+
+.insight-overlay-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.insight-overlay-title {
+    color: rgb(200, 200, 220);
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.overlay-close-btn {
+    background-color: rgba(80, 80, 100, 0.5);
+    border-color: rgba(100, 100, 130, 0.5);
+    color: rgb(180, 180, 200);
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+/* ── INSIGHT Tabs ────────────────────────────────────────────── */
+.insight-tabs {
+    flex-direction: row;
+    margin-bottom: 12px;
+    border-bottom-width: 1px;
+    border-color: rgba(80, 80, 120, 0.4);
+}
+
+.insight-tab {
+    background-color: transparent;
+    border-width: 0;
+    border-bottom-width: 2px;
+    border-color: transparent;
+    color: rgb(140, 140, 160);
+    font-size: 11px;
+    padding: 6px 14px;
+    margin-right: 4px;
+    border-radius: 0;
+}
+
+.insight-tab:hover {
+    color: rgb(200, 200, 220);
+}
+
+.insight-tab-active {
+    color: rgb(220, 220, 240);
+    border-color: rgb(120, 120, 200);
+    -unity-font-style: bold;
+}
+
+.insight-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-height: 200px;
+}
+
+/* ── Pile viewer ─────────────────────────────────────────────── */
+.pile-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow: hidden;
+}
+
+.pile-btn {
+    background-color: rgba(69, 69, 69, 1);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgba(100, 100, 110, 0.5);
+    padding: 0;
+}
+
+.pile-btn:hover {
+    border-color: rgba(160, 160, 180, 0.8);
+}
+
+.opponent-pile-btn {
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    margin: 0;
+    align-items: center;
+}
+
+.opponent-pile-btn:hover .opponent-count-value {
+    color: rgb(255, 255, 255);
+}
+
+/* ── Locked / empty state label ──────────────────────────────── */
+.overlay-locked-label {
+    color: rgb(100, 100, 120);
+    font-size: 13px;
+    -unity-font-style: italic;
+    margin: 20px auto;
+}
+
+/* ── Mini card in overlays ───────────────────────────────────── */
+.mini-card-wrap {
+    margin: 2px;
+}
+
+.tree-sight-label {
+    color: rgb(160, 200, 140);
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.tree-content {
+    flex-direction: column;
+}
+
+.tree-scroll {
+    flex-grow: 1;
+    max-height: 500px;
+}
+
+.tree-node-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.tree-node-name {
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.tree-node-desc {
+    font-size: 10px;
+    color: rgb(120, 120, 140);
+}
+
+.tree-node-prereq {
+    font-size: 9px;
+    color: rgb(100, 90, 80);
+}
+
+.tree-node-unlocked-label {
+    font-size: 11px;
+    color: rgb(100, 200, 100);
+    flex-shrink: 0;
+}
+
+.tree-node-cost-label {
+    font-size: 11px;
+    color: rgb(100, 100, 130);
+    flex-shrink: 0;
+}
+
+.tree-node-unlock-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    background-color: rgba(50, 50, 130, 0.8);
+    border-color: rgba(80, 80, 180, 0.6);
+    color: rgb(200, 200, 255);
+    flex-shrink: 0;
+}
+
+.tree-node-info {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+.tree-node-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.insight-content-scroll {
+    flex-grow: 1;
+    max-height: 500px;
+}
+
+.insight-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+/* ── Shop Panel ──────────────────────────────────────────────── */
+.shop-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    align-items: center;
+    justify-content: center;
+}
+
+.shop-panel-inner {
+    background-color: rgb(18, 18, 28);
+    border-width: 1px;
+    border-color: rgb(80, 80, 120);
+    border-radius: 6px;
+    padding: 16px;
+    width: 720px;
+    max-height: 88%;
+    flex-direction: column;
+}
+
+.shop-silver-label {
+    color: rgb(220, 190, 80);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.shop-scroll {
+    flex-grow: 1;
+    max-height: 560px;
+}
+
+.shop-content {
+    flex-direction: column;
+    padding: 4px;
+}
+
+.shop-section-label {
+    font-size: 10px;
+    color: rgb(120, 120, 150);
+    -unity-font-style: bold;
+    margin-top: 12px;
+    margin-bottom: 6px;
+    -unity-text-align: upper-left;
+}
+
+.shop-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.shop-item {
+    flex-direction: column;
+    align-items: center;
+    background-color: rgba(30, 30, 45, 0.95);
+    border-width: 1px;
+    border-color: rgba(80, 80, 120, 0.6);
+    border-radius: 4px;
+    padding: 8px;
+    margin: 4px;
+    min-width: 110px;
+    max-width: 140px;
+}
+
+.shop-item:hover {
+    border-color: rgba(140, 140, 200, 0.8);
+    background-color: rgba(40, 40, 60, 0.95);
+}
+
+.shop-item-sold {
+    opacity: 0.35;
+}
+
+.shop-item-name {
+    font-size: 11px;
+    color: rgb(200, 200, 220);
+    -unity-font-style: bold;
+    -unity-text-align: upper-center;
+    white-space: normal;
+    margin-bottom: 6px;
+}
+
+.shop-item-desc {
+    font-size: 9px;
+    color: rgb(130, 130, 150);
+    -unity-text-align: upper-center;
+    white-space: normal;
+    margin-bottom: 6px;
+}
+
+.shop-item-price {
+    font-size: 11px;
+    color: rgb(220, 190, 80);
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+}
+
+.shop-item-cant-afford {
+    color: rgb(160, 80, 80);
+}
+
+.shop-buy-btn {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    background-color: rgba(50, 80, 50, 0.9);
+    border-color: rgba(80, 140, 80, 0.7);
+    color: rgb(180, 230, 180);
+}
+
+.shop-buy-btn:hover {
+    background-color: rgba(60, 100, 60, 0.9);
+}
+
+.shop-buy-btn:disabled {
+    opacity: 0.4;
+}
+
+.shop-done-btn {
+    margin-top: 12px;
+    padding: 8px;
+    font-size: 13px;
+    background-color: rgba(60, 40, 40, 0.9);
+    border-color: rgba(120, 60, 60, 0.7);
+    color: rgb(220, 180, 180);
+    border-radius: 4px;
+    align-self: flex-end;
+}
+
+.shop-done-btn:hover {
+    background-color: rgba(80, 50, 50, 0.9);
+}
+
+.auction-desc-label {
+    font-size: 11px;
+    color: rgb(130, 130, 150);
+    -unity-font-style: italic;
+    margin-bottom: 12px;
+}
+
+.auction-cards-row {
+    flex-direction: row;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.auction-card-slot {
+    flex-direction: column;
+    align-items: center;
+    background-color: rgba(30, 30, 45, 0.95);
+    border-width: 1px;
+    border-color: rgba(80, 80, 120, 0.6);
+    border-radius: 4px;
+    padding: 12px;
+    margin: 0 8px;
+    min-width: 160px;
+}
+
+.auction-card-name {
+    font-size: 13px;
+    color: rgb(200, 200, 220);
+    -unity-font-style: bold;
+    -unity-text-align: upper-center;
+    margin-bottom: 8px;
+}
+
+.auction-bid-label {
+    font-size: 10px;
+    color: rgb(140, 140, 160);
+    margin-bottom: 4px;
+}
+
+.auction-bid-field {
+    width: 80px;
+    background-color: rgba(20, 20, 35, 0.9);
+    border-color: rgba(80, 80, 120, 0.6);
+    border-radius: 3px;
+    color: rgb(220, 190, 80);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+    padding: 4px;
+    margin-bottom: 4px;
+}
+
+.auction-bid-controls {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.auction-bid-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    padding: 0;
+    background-color: rgba(40, 40, 60, 0.9);
+    border-color: rgba(80, 80, 120, 0.5);
+    border-radius: 3px;
+    color: rgb(200, 200, 220);
+    -unity-text-align: middle-center;
+}
+
+.auction-bid-btn:hover {
+    background-color: rgba(60, 60, 90, 0.9);
+}
+
+.auction-bid-value {
+    font-size: 16px;
+    color: rgb(220, 190, 80);
+    -unity-font-style: bold;
+    min-width: 40px;
+    -unity-text-align: middle-center;
+}
+
+.auction-submit-row {
+    flex-direction: row;
+    justify-content: flex-end;
+}

@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="lobby-root">
+        <ui:Label name="title-label" text="FogClouds" />
+        <ui:Button name="host-button" text="Host Game" />
+        <ui:Label name="status-label" text="" />
+    </ui:VisualElement>
+</ui:UXML>

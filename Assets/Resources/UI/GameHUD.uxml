@@ -29,7 +29,10 @@
 
             <!-- MIDDLE: hand / deck / discard counts -->
             <ui:VisualElement name="opponent-counts" class="opponent-counts">
-                <ui:Button name="opponent-hand-btn" text="?" class="opponent-count-block opponent-pile-btn"/>
+                <ui:Button name="opponent-hand-btn" class="opponent-count-block opponent-pile-btn">
+                    <ui:Label name="opponent-hand-count" text="?" class="opponent-count-value"/>
+                    <ui:Label text="HAND" class="opponent-count-label"/>
+                </ui:Button>
                 <ui:Button name="opponent-deck-btn" class="opponent-count-block opponent-pile-btn">
                     <ui:Label name="opponent-deck-count" text="?" class="opponent-count-value"/>
                     <ui:Label text="DECK" class="opponent-count-label"/>

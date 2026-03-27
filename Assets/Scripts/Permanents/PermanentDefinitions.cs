@@ -143,6 +143,22 @@ namespace FogClouds
             new TotemOfSharpness(OwnerId, BonusDamage, TurnsRemaining);
     }
 
+    [Serializable]
+    public class MirrorOfMoonlight : BoardPermanent
+    {
+        public MirrorOfMoonlight(int ownerId, int turnsRemaining)
+        {
+            PermanentId = "mirror_of_moonlight";
+            DisplayName = "Mirror of Moonlight";
+            OwnerId = ownerId;
+            TurnsRemaining = turnsRemaining;
+        }
+
+
+        public override BoardPermanent Clone() =>
+            new MirrorOfMoonlight(OwnerId, TurnsRemaining);
+    }
+
     // Totem of Sacrifice — reduces blood costs by 1 (minimum 1), infinite duration
     [Serializable]
     public class TotemOfSacrifice : BoardPermanent

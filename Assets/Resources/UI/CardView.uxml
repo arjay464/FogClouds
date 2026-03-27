@@ -11,15 +11,14 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- MIDDLE: Type shape area -->
+        <!-- MIDDLE: Description -->
         <ui:VisualElement name="card-art" class="card-art">
-            <ui:VisualElement name="type-shape" class="type-shape"/>
+            <ui:Label name="flavour-text" text="" class="flavour-text"/>
         </ui:VisualElement>
 
         <!-- BOTTOM: Speed (Queueable only) + Flavour -->
         <ui:VisualElement name="card-footer" class="card-footer">
             <ui:Label name="speed-label" text="" class="speed-label"/>
-            <ui:Label name="flavour-text" text="" class="flavour-text"/>
         </ui:VisualElement>
 
     </ui:VisualElement>

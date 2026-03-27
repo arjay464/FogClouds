@@ -39,7 +39,7 @@ public class CardEffectRegistry : MonoBehaviour
         _effects["hemorrhage_base"] = new HemorrhageEffect();
         _effects["hemorrhage_upcast"] = new HemorrhageEffect();
         _effects["bloodrush_base"] = new BloodrushEffect();
-        _effects["bloodrush_upcast"] = new BloodrushEffect(); // upcast version doubles via IsAttack flag
+        _effects["bloodrush_upcast"] = new BloodrushEffect();
         _effects["arterial_cut"] = new ArterialCutEffect();
         _effects["hidden_daggers"] = new HiddenDaggersEffect();
         _effects["totem_of_sharpness"] = new TotemOfSharpnessEffect();

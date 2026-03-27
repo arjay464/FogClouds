@@ -47,7 +47,7 @@ public class GameHUDController : MonoBehaviour
     private VisualElement _opponentHpBarFill;
     private Label _opponentHpLabel;
     private Label _opponentShieldLabel;
-    private Button _opponentHandBtn;
+    private Button _opponentHandCount;
     private Label _opponentDeckCount;
     private Label _opponentDiscardCount;
     private Label _opponentDaggersLabel;
@@ -111,6 +111,8 @@ public class GameHUDController : MonoBehaviour
 
 
     private Dictionary<string, CharacterData> _characterCache = new();
+    private Dictionary<string, CardDefinition> _cardDefCache = new();
+    private InsightTreeDefinition _cachedInsightTree;
 
     void Start()
     {
@@ -145,7 +147,7 @@ public class GameHUDController : MonoBehaviour
         _opponentHpBarFill = _root.Q<VisualElement>("opponent-hp-bar-fill");
         _opponentHpLabel = _root.Q<Label>("opponent-hp-label");
         _opponentShieldLabel = _root.Q<Label>("opponent-shield-label");
-        _opponentHandBtn = _root.Q<Button>("opponent-hand-btn");
+        _opponentHandCount = _root.Q<Button>("opponent-hand-btn");
         _opponentDeckCount = _root.Q<Label>("opponent-deck-count");
         _opponentDiscardCount = _root.Q<Label>("opponent-discard-count");
         _opponentDaggersLabel = _root.Q<Label>("opponent-daggers-label");
@@ -194,7 +196,7 @@ public class GameHUDController : MonoBehaviour
         _insightButton.clicked += OnInsightClicked;
         _passiveButton.clicked += OnPassiveClicked;
         _auctionSubmitBtn.clicked += OnAuctionSubmit;
-        _opponentHandBtn.clicked += OnOpponentHandClicked;
+        _opponentHandCount.clicked += OnOpponentHandClicked;
 
         //Buttons
         _root.Q<Button>("insight-overlay-close").clicked += () =>
@@ -375,6 +377,24 @@ public class GameHUDController : MonoBehaviour
             if (data != null) _characterCache[characterId] = data;
         }
         return data;
+    }
+
+    private CardDefinition GetCardDef(string cardId)
+    {
+        if (string.IsNullOrEmpty(cardId)) return null;
+        if (!_cardDefCache.TryGetValue(cardId, out var def))
+        {
+            def = Resources.Load<CardDefinition>($"Cards/{cardId}");
+            if (def != null) _cardDefCache[cardId] = def;
+        }
+        return def;
+    }
+
+    private InsightTreeDefinition GetInsightTreeDef()
+    {
+        if (_cachedInsightTree == null)
+            _cachedInsightTree = Resources.Load<InsightTreeDefinition>("TreeNodes/InsightTree");
+        return _cachedInsightTree;
     }
 
     private int LoadBaseHP(string characterId)
@@ -569,7 +589,7 @@ public class GameHUDController : MonoBehaviour
         _opponentShieldLabel.text = opp.Shield > 0 ? $"{opp.Shield}" : "";
 
         // Hand / Deck / Discard counts
-        _opponentHandBtn.text = opp.HandSize >= 0 ? opp.HandSize.ToString() : "?";
+        _opponentHandCount.text = opp.HandSize >= 0 ? opp.HandSize.ToString() : "?";
         _opponentDeckCount.text = opp.DeckCount >= 0 ? opp.DeckCount.ToString() : "?";
         _opponentDiscardCount.text = opp.DiscardCount >= 0 ? opp.DiscardCount.ToString() : "?";
 
@@ -636,7 +656,7 @@ public class GameHUDController : MonoBehaviour
         }
         foreach (var cardId in upgrades)
         {
-            var def = Resources.Load<CardDefinition>($"Cards/{cardId}");
+            var def = GetCardDef(cardId);
             string name = def != null ? def.DisplayName : cardId;
             var card = MakeMiniCard(name);
             _insightContent.Add(card);
@@ -670,7 +690,7 @@ public class GameHUDController : MonoBehaviour
     private void PopulateOpponentTree(ClientGameStateView view)
     {
         var tree = view.OpponentState?.InsightTree;
-        var insightDef = Resources.Load<InsightTreeDefinition>("TreeNodes/InsightTree");
+        var insightDef = GetInsightTreeDef();
 
         if (tree == null)
         {
@@ -750,7 +770,7 @@ public class GameHUDController : MonoBehaviour
         wrap.AddToClassList("mini-card-wrap");
 
         // Reuse CardView template at smaller scale
-        var template = Resources.Load<VisualTreeAsset>("UI/CardView");
+        var template = Resources.Load<VisualTreeAsset>("UI/CardView"); //cache?
         template.CloneTree(wrap);
 
         var cardRoot = wrap.Q<VisualElement>("card-root");
@@ -1536,7 +1556,7 @@ public class GameHUDController : MonoBehaviour
                 else if (selected.Count < 2)
                 {
                     selected.Add(id);
-                    selectBtn.text = "✓ Removing";
+                    selectBtn.text = "Removing";
                     item.style.borderTopColor = new StyleColor(new Color(0.8f, 0.3f, 0.3f));
                 }
             };

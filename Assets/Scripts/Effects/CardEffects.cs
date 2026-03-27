@@ -357,6 +357,8 @@ namespace FogClouds
         public void Apply(QueueEntry source, GameState state)
         {
             var player = state.GetPlayer(source.OwnerId);
+            var mirror = new MirrorOfMoonlight(source.OwnerId, turnsRemaining: 2) { SourceCard = source.Card };
+            player.Board.Add(mirror);
             player.MirrorActive = true;
             player.MirrorTurnsRemaining = 2;
             Debug.Log($"[MirrorOfMoonlightEffect] Player {source.OwnerId} activated Mirror of Moonlight for 2 turns.");

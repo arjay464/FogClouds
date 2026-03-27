@@ -3,7 +3,6 @@ namespace FogClouds
 {
     // Implemented by every card effect class.
     // Effects receive the full server-side GameState and the QueueEntry that triggered them.
-    // Effects must never read from TurnStartSnapshot — they operate on live state.
     public interface ICardEffect
     {
         // Apply this card's effect to the game state.

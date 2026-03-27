@@ -1,0 +1,23 @@
+#lobby-root {
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+#title-label {
+    font-size: 32px;
+    margin-bottom: 24px;
+}
+
+#host-button {
+    width: 200px;
+    height: 48px;
+    font-size: 18px;
+    margin-bottom: 16px;
+}
+
+#status-label {
+    font-size: 14px;
+    color: rgb(180, 180, 180);
+}

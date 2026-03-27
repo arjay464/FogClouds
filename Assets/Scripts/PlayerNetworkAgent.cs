@@ -6,6 +6,8 @@ public class PlayerNetworkAgent : NetworkBehaviour
 {
     public static PlayerNetworkAgent LocalAgent { get; private set; }
 
+    public bool _registered = false;
+
     public override void OnStartLocalPlayer()
     {
         LocalAgent = this;
@@ -13,6 +15,9 @@ public class PlayerNetworkAgent : NetworkBehaviour
 
     public override void OnStartServer()
     {
+        if (_registered) return;
+        _registered = true;
+
         if (GameManager.Instance == null)
         {
             Debug.LogError("[PlayerNetworkAgent] GameManager instance not found.");

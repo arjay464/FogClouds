@@ -1,0 +1,151 @@
+/* ── Card Base ───────────────────────────────────────────────── */
+.card-root {
+    width: 80px;
+    height: 112px;
+    background-color: rgba(35, 35, 45, 0.97);
+    border-width: 1px;
+    border-color: rgba(100, 100, 120, 0.5);
+    border-radius: 4px;
+    flex-direction: column;
+    overflow: hidden;
+    transition-property: transform, opacity;
+    transition-duration: 0.15s;
+}
+
+/* Type variants — applied by CardView.cs at runtime */
+.card-queueable {
+    border-radius: 4px;
+    border-color: rgba(180, 140, 60, 0.6);
+}
+
+.card-instant {
+    border-radius: 12px;
+    border-color: rgba(80, 160, 200, 0.6);
+}
+
+.card-permanent {
+    border-radius: 20px;
+    border-color: rgba(80, 180, 100, 0.6);
+}
+
+.card-root:hover {
+    border-color: rgba(200, 200, 220, 0.8);
+}
+
+.card-dragging {
+    opacity: 0.55;
+}
+
+.card-selected {
+    border-color: rgba(220, 200, 100, 0.9);
+    border-width: 2px;
+}
+
+.card-upcast {
+    border-color: rgba(180, 80, 220, 0.9);
+    border-width: 2px;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.card-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 4px 2px 4px;
+    background-color: rgba(20, 20, 30, 0.8);
+    height: 22px;
+}
+
+.card-name {
+    color: rgb(220, 220, 230);
+    font-size: 8px;
+    -unity-font-style: bold;
+    flex: 1;
+    overflow: hidden;
+    -unity-text-overflow-position: end;
+    white-space: nowrap;
+}
+
+.card-cost {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+.dagger-pips {
+    flex-direction: row;
+}
+
+.dagger-pip {
+    width: 6px;
+    height: 6px;
+    background-color: rgb(190, 150, 40);
+    border-radius: 1px;
+    margin-left: 1px;
+    rotate: 45deg;
+}
+
+.blood-cost {
+    color: rgb(200, 80, 80);
+    font-size: 8px;
+    -unity-font-style: bold;
+    margin-left: 2px;
+}
+
+/* ── Art Area ────────────────────────────────────────────────── */
+.card-art {
+    flex: 1;
+    background-color: rgba(25, 25, 35, 0.6);
+    align-items: stretch;
+    justify-content: flex-end;
+    margin: 2px;
+    border-radius: 2px;
+}
+
+.flavour-text {
+    color: rgb(180, 200, 200);
+    background-color: rgba(80, 80, 100, 0.4);
+    font-size: 8px;
+    -unity-font-style: bold;
+    width: 100%;
+    padding: 4px;
+    white-space: normal;
+}
+
+/* Type shape variants */
+.shape-queueable {
+    border-radius: 2px;
+    background-color: rgba(180, 140, 60, 0.3);
+    border-width: 1px;
+    border-color: rgba(180, 140, 60, 0.5);
+}
+
+.shape-instant {
+    rotate: 45deg;
+    background-color: rgba(80, 160, 200, 0.3);
+    border-width: 1px;
+    border-color: rgba(80, 160, 200, 0.5);
+}
+
+.shape-permanent {
+    border-radius: 16px;
+    background-color: rgba(80, 180, 100, 0.3);
+    border-width: 1px;
+    border-color: rgba(80, 180, 100, 0.5);
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.card-footer {
+    height: 28px;
+    padding: 2px 4px;
+    background-color: rgba(20, 20, 30, 0.8);
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.speed-label {
+    color: rgb(180, 200, 220);
+    font-size: 8px;
+    -unity-font-style: bold;
+}

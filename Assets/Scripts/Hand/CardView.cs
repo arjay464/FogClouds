@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using FogClouds;
 using System;
+using System.Collections.Generic;
+using Unity.VisualScripting;
 
 public class CardView : VisualElement
 {
@@ -15,9 +17,10 @@ public class CardView : VisualElement
     private Label _nameLabel;
     private VisualElement _daggerPips;
     private Label _bloodCost;
-    private VisualElement _typeShape;
     private Label _speedLabel;
     private Label _flavourLabel;
+
+    private static Dictionary<string, CardDefinition> _defCache = new();
 
 
     public CardView(CardInstanceView data)
@@ -29,7 +32,6 @@ public class CardView : VisualElement
         _nameLabel = this.Q<Label>("card-name");
         _daggerPips = this.Q<VisualElement>("dagger-pips");
         _bloodCost = this.Q<Label>("blood-cost");
-        _typeShape = this.Q<VisualElement>("type-shape");
         _speedLabel = this.Q<Label>("speed-label");
         _flavourLabel = this.Q<Label>("flavour-text");
 
@@ -62,33 +64,31 @@ public class CardView : VisualElement
         cardRoot.RemoveFromClassList("card-queueable");
         cardRoot.RemoveFromClassList("card-instant");
         cardRoot.RemoveFromClassList("card-permanent");
-        _typeShape.RemoveFromClassList("shape-queueable");
-        _typeShape.RemoveFromClassList("shape-instant");
-        _typeShape.RemoveFromClassList("shape-permanent");
 
+        var def = LoadDef(data.CardId);
         switch (data.Type)
         {
             case CardType.Queueable:
                 cardRoot.AddToClassList("card-queueable");
-                _typeShape.AddToClassList("shape-queueable");
+                _flavourLabel.text = def != null ? def.FlavourText : "";
+                _flavourLabel.style.display = DisplayStyle.Flex;
                 _speedLabel.text = $"SPD {data.ModifiedSpeed}";
                 _speedLabel.style.display = DisplayStyle.Flex;
                 break;
             case CardType.Instant:
                 cardRoot.AddToClassList("card-instant");
-                _typeShape.AddToClassList("shape-instant");
+                _flavourLabel.text = def != null ? def.FlavourText : "";
+                _flavourLabel.style.display = DisplayStyle.Flex;
                 _speedLabel.style.display = DisplayStyle.None;
                 break;
             case CardType.Permanent:
                 cardRoot.AddToClassList("card-permanent");
-                _typeShape.AddToClassList("shape-permanent");
+                _flavourLabel.text = def != null ? def.FlavourText : "";
+                _flavourLabel.style.display = DisplayStyle.Flex;
                 _speedLabel.style.display = DisplayStyle.None;
                 break;
         }
 
-        // Flavour text — load from CardDefinition asset
-        var def = Resources.Load<CardDefinition>($"Cards/{data.CardId}");
-        _flavourLabel.text = def != null ? def.FlavourText : "";
     }
 
     private void RegisterCallbacks()
@@ -152,5 +152,24 @@ public class CardView : VisualElement
             cardRoot.AddToClassList("card-dragging");
         else
             cardRoot.RemoveFromClassList("card-dragging");
+    }
+    private static string CardIdToAssetName(string cardId)
+    {
+        // Convert snake_case to PascalCase
+        var parts = cardId.Split('_');
+        return string.Concat(System.Array.ConvertAll(parts,
+            p => char.ToUpper(p[0]) + p.Substring(1)));
+    }
+
+    private static CardDefinition LoadDef(string cardId)
+    {
+        if (!_defCache.TryGetValue(cardId, out var def))
+        {
+            def = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
+            if (def != null) _defCache[cardId] = def;
+        }
+        Debug.Log($"[LoadDef] ({def == null})");
+        if (def != null) { Debug.Log($"[LoadDef] TXT = {def.FlavourText}"); }
+        return def;
     }
 }
