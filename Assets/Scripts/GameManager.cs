@@ -4,6 +4,7 @@ using Mirror;
 using UnityEngine;
 using FogClouds;
 using System.Linq;
+using UnityEditor.VersionControl;
 
 public class GameManager : NetworkBehaviour
 {
@@ -20,6 +21,8 @@ public class GameManager : NetworkBehaviour
     private int _roguelikeVotes = 0;
 
     private int _shopVotes = 0;
+
+    private int _firstResolverId;
 
     private bool IsShopTurn() => _gameState.TurnNumber % 4 == 0 && _gameState.TurnNumber % 8 != 0;
     private bool IsAuctionTurn() => _gameState.TurnNumber % 8 == 0;
@@ -75,6 +78,9 @@ public class GameManager : NetworkBehaviour
 
         BuildStartingDeck(_gameState.GetPlayer(0));
         BuildStartingDeck(_gameState.GetPlayer(1));
+
+        ApplyPassive(_gameState.GetPlayer(0), "cursed_dagger");
+        ApplyPassive(_gameState.GetPlayer(1), "cursed_dagger");
 
         _gameState.GetPlayer(0).DrawCards(5, _gameState.Rng);
         _gameState.GetPlayer(1).DrawCards(5, _gameState.Rng);
@@ -134,9 +140,17 @@ public class GameManager : NetworkBehaviour
         p0.OnTurnStart();
         p1.OnTurnStart();
 
+        ResetPassiveStacks(_gameState.GetPlayer(0), "accelerator");
+        ResetPassiveStacks(_gameState.GetPlayer(1), "accelerator");
+        ResetPassiveStacks(_gameState.GetPlayer(0), "clutterstorm");
+        ResetPassiveStacks(_gameState.GetPlayer(1), "clutterstorm");
+
         //Apply status effects
         ApplyTurnStartStatusEffects(_gameState.GetPlayer(0));
         ApplyTurnStartStatusEffects(_gameState.GetPlayer(1));
+
+        ResetPassiveExhausted(_gameState.GetPlayer(0), "ancient_telescope");
+        ResetPassiveExhausted(_gameState.GetPlayer(1), "ancient_telescope");
 
         //Apply passive effects
         ApplyPassiveTurnStart(_gameState.GetPlayer(0));
@@ -152,6 +166,9 @@ public class GameManager : NetworkBehaviour
 
         AwardSilver(p0, 5, "turn start");
         AwardSilver(p1, 5, "turn start");
+
+        _gameState.NextDamageReduction = 0;
+        _gameState.LastResolvedEffectId = null;
 
         AdvancePhase();
     }
@@ -344,7 +361,15 @@ public class GameManager : NetworkBehaviour
         }
 
         int playerId = _registeredPlayers.IndexOf(agent);
-        _gameState.GetPlayer(playerId).ReadyToEndTurn = true;
+        var player = _gameState.GetPlayer(playerId);
+
+        if (player.ReadyToEndTurn)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} already submitted EndTurn — ignored.");
+            return;
+        }
+
+        player.ReadyToEndTurn = true;
         _endTurnVotes++;
         Debug.Log($"[GameManager] Player {playerId} submitted EndTurn. Votes: {_endTurnVotes}/2");
 
@@ -388,6 +413,12 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
+        if (player.ReadyToEndTurn)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} tried to play card after ending turn.");
+            return;
+        }
+
         string effectId = card.EffectId;
         if (upcast)
         {
@@ -414,11 +445,35 @@ public class GameManager : NetworkBehaviour
             effectId = upcastId;
         }
 
+        // Shadowstep — set speed to fastest card in own queue + 2 at queue time
+        if (card.EffectId == "shadowstep")
+        {
+            var ownQueue = _gameState.GetQueue(playerId);
+            int maxSpeed = ownQueue.Count > 0 ? ownQueue.Max(e => e.CurrentSpeed) : 0;
+            card.ModifiedSpeed = maxSpeed > 0 ? maxSpeed + 2 : 2;
+        }
+
         DeductCost(player, card.Cost);
         player.Hand.Remove(card);
         player.Discard.Add(card);
 
         _gameState.EnqueueCard(playerId, card, wasUpcast: upcast);
+
+        if (player.NextCardSpeedBonus > 0)
+        {
+            var queue = _gameState.GetQueue(playerId);
+            if (queue.Count > 0)
+            {
+                queue[queue.Count - 1].CurrentSpeed += player.NextCardSpeedBonus;
+                _gameState.SortPlayerQueue(playerId);
+            }
+            player.NextCardSpeedBonus = 0;
+        }
+
+        player.CardsQueuedThisTurn++;
+
+        var accelerator = player.Passives.Find(p => p.PassiveId == "accelerator");
+        if (accelerator != null) accelerator.StackCount++;
 
         AwardSilver(player, 2, "card queued");
 
@@ -426,6 +481,60 @@ public class GameManager : NetworkBehaviour
 
         Debug.Log($"[GameManager] Player {playerId} queued {card} (upcast: {upcast}). Queue size: {_gameState.GetQueue(playerId).Count}");
 
+    }
+
+    [Server]
+    public void HandleQueueCardWithTarget(PlayerNetworkAgent agent, int cardInstanceId, bool upcast, int targetInstanceId)
+    {
+        // All the same validation as HandleQueueCard
+        if (CurrentPhase != TurnPhase.MainPhase) return;
+
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        var card = player.Hand.Find(c => c.InstanceId == cardInstanceId);
+        if (card == null || card.Type != CardType.Queueable) return;
+        if (!CanAfford(player, card.Cost)) return;
+
+        string effectId = card.EffectId;
+        if (upcast)
+        {
+            if (!card.IsAttack) return;
+            if (player.Resources.PerTurnResource < 1) return;
+            string upcastId = effectId.Replace("_base", "") + "_upcast";
+            if (CardEffectRegistry.Instance.GetEffect(upcastId) == null) return;
+            player.Resources.PerTurnResource -= 1;
+            effectId = upcastId;
+        }
+
+        DeductCost(player, card.Cost);
+        player.Hand.Remove(card);
+        player.Discard.Add(card);
+
+        _gameState.EnqueueCard(playerId, card, wasUpcast: upcast, targetInstanceId: targetInstanceId);
+
+        // Accelerator
+        var accelerator = player.Passives.Find(p => p.PassiveId == "accelerator");
+        if (accelerator != null) accelerator.StackCount++;
+
+        // Next card speed bonus
+        if (player.NextCardSpeedBonus > 0)
+        {
+            var queue = _gameState.GetQueue(playerId);
+            if (queue.Count > 0)
+            {
+                queue[queue.Count - 1].CurrentSpeed += player.NextCardSpeedBonus;
+                _gameState.SortPlayerQueue(playerId);
+            }
+            player.NextCardSpeedBonus = 0;
+        }
+
+        player.CardsQueuedThisTurn++;
+        var opponent = _gameState.GetOpponent(playerId);
+        opponent.CardsQueuedThisTurn++;
+
+        AwardSilver(player, 2, "card queued");
+        StateRelay.Instance.BroadcastToAll();
     }
 
     [Server]
@@ -446,6 +555,15 @@ public class GameManager : NetworkBehaviour
     [Server]
     private IEnumerator ResolveQueue()
     {
+        if (_gameState.MergedQueue.Count == 0)
+        {
+            EnterRoguelikePhase();
+            yield break;
+        }
+
+        _firstResolverId = _gameState.MergedQueue[0].OwnerId;
+        ApplyUnbrokenChain(_firstResolverId);
+
         while (_gameState.MergedQueue.Count > 0)
         {
             StateRelay.Instance.BroadcastToAll();
@@ -460,7 +578,16 @@ public class GameManager : NetworkBehaviour
                 ? entry.Card.EffectId.Replace("_base", "") + "_upcast"
                 : entry.Card.EffectId;
             var effect = CardEffectRegistry.Instance.GetEffect(resolveEffectId);
-            effect?.Apply(entry, _gameState);
+
+            if (entry.TargetInstanceId != -1 && effect is ITargetedEffect targeted)
+                targeted.ApplyTargeted(entry, _gameState, entry.TargetInstanceId);
+            else
+                effect?.Apply(entry, _gameState);
+
+            // Record for Blood Mirror
+            _gameState.LastResolvedEffectId = entry.Card.EffectId;
+            if (entry.WasUpcast)
+                _gameState.LastResolvedEffectId = entry.Card.EffectId.Replace("_base", "") + "_upcast";
 
             // Totem of Progress — draw 1 if card was upcast
             if (entry.WasUpcast)
@@ -569,6 +696,12 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
+        if (player.ReadyToEndTurn)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} tried to play card after ending turn.");
+            return;
+        }
+
         DeductCost(player, card.Cost);
         player.Hand.Remove(card);
         player.Discard.Add(card);
@@ -588,6 +721,40 @@ public class GameManager : NetworkBehaviour
 
         StateRelay.Instance.BroadcastToAll();
         Debug.Log($"[GameManager] Player {playerId} played instant {card}.");
+    }
+
+    [Server]
+    public void HandlePlayInstantWithTarget(PlayerNetworkAgent agent, int cardInstanceId, int targetInstanceId)
+    {
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        if (CurrentPhase != TurnPhase.MainPhase) return;
+
+        var card = player.Hand.Find(c => c.InstanceId == cardInstanceId);
+        if (card == null || card.Type != CardType.Instant) return;
+        if (!CanAfford(player, card.Cost)) return;
+
+        DeductCost(player, card.Cost);
+        player.Hand.Remove(card);
+        player.Discard.Add(card);
+
+        var entry = new QueueEntry(playerId, card, 0);
+        var effect = CardEffectRegistry.Instance.GetEffect(card.EffectId);
+
+        if (effect is ITargetedEffect targeted)
+            targeted.ApplyTargeted(entry, _gameState, targetInstanceId);
+        else
+            effect?.Apply(entry, _gameState);
+
+        if (player.MirrorActive)
+        {
+            var mirrorEntry = new QueueEntry(playerId, card, 2);
+            _gameState.GetQueue(playerId).Add(mirrorEntry);
+        }
+
+        AwardSilver(player, 2, "instant played");
+        StateRelay.Instance.BroadcastToAll();
     }
 
     [Server]
@@ -618,6 +785,12 @@ public class GameManager : NetworkBehaviour
         if (!CanAfford(player, card.Cost))
         {
             Debug.LogWarning($"[GameManager] Player {playerId} cannot afford {card}.");
+            return;
+        }
+
+        if (player.ReadyToEndTurn)
+        {
+            Debug.LogWarning($"[GameManager] Player {playerId} tried to play card after ending turn.");
             return;
         }
 
@@ -1479,5 +1652,128 @@ public class GameManager : NetworkBehaviour
             var effect = PassiveRegistry.Instance.GetEffect(passive.PassiveId);
             effect?.OnTurnStart(player, _gameState);
         }
+    }
+
+    [Server]
+    private void ResetPassiveStacks(PlayerState player, string passiveId)
+    {
+        var passive = player.Passives.Find(p => p.PassiveId == passiveId);
+        if (passive != null) passive.StackCount = 0;
+    }
+
+    // Unbroken Chain: reward first resolver, break all others
+    private void ApplyUnbrokenChain(int firstResolverId)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            var player = _gameState.GetPlayer(i);
+            var chain = player.Passives.Find(p => p.PassiveId == "unbroken_chain");
+            if (chain == null) continue;
+
+            if (i == firstResolverId)
+                chain.StackCount++;
+            else
+                chain.StackCount = 0;
+        }
+    }
+    [Server]
+    public void HandleSlightOfHand(PlayerNetworkAgent agent, int cardInstanceId)
+    {
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        if (CurrentPhase != TurnPhase.MainPhase) return;
+
+        var slight = player.Passives.Find(p => p.PassiveId == "slight_of_hand");
+        if (slight == null || player.SlightOfHandUsedThisTurn) return;
+
+        var card = player.Discard.Find(c => c.InstanceId == cardInstanceId);
+        if (card == null)
+        {
+            Debug.LogWarning($"[GameManager] SlightOfHand: card {cardInstanceId} not in discard.");
+            return;
+        }
+
+        player.Discard.Remove(card);
+        int insertIndex = _gameState.Rng.Next(player.Deck.Count + 1);
+        player.Deck.Insert(insertIndex, card);
+        player.SlightOfHandUsedThisTurn = true;
+
+        StateRelay.Instance.BroadcastToAll();
+        Debug.Log($"[GameManager] Player {playerId} used Slight of Hand on {card}.");
+    }
+
+    [Server]
+    public void HandleMarketCrash(PlayerNetworkAgent agent)
+    {
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        if (CurrentPhase != TurnPhase.MainPhase) return;
+
+        var crash = player.Passives.Find(p => p.PassiveId == "market_crash");
+        if (crash == null || crash.IsExhausted) return;
+
+        crash.IsExhausted = true;
+
+        // Queue a Market Crash card into the player's queue
+        var crashCard = new CardInstance
+        {
+            InstanceId = _gameState.GenerateInstanceId(),
+            CardId = "market_crash_effect",
+            DisplayName = "Market Crash",
+            Type = CardType.Queueable,
+            ModifiedSpeed = 10, // resolves fast
+            IsAttack = false
+        };
+
+        _gameState.EnqueueCard(playerId, crashCard, wasUpcast: false);
+        StateRelay.Instance.BroadcastToAll();
+        Debug.Log($"[GameManager] Player {playerId} triggered Market Crash.");
+    }
+
+    [Server]
+    public void HandleBlessedDiaryTarget(PlayerNetworkAgent agent, string permanentId)
+    {
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        var diary = player.Passives.Find(p => p.PassiveId == "blessed_diary");
+        if (diary == null) return;
+
+        var permanent = player.Board.Find(p => p.PermanentId == permanentId);
+        if (permanent == null)
+        {
+            Debug.LogWarning($"[GameManager] BlessedDiary: permanent {permanentId} not on board.");
+            return;
+        }
+
+        diary.TargetPermanentId = permanentId;
+        StateRelay.Instance.BroadcastToAll();
+        Debug.Log($"[GameManager] Player {playerId} attached Blessed Diary to {permanentId}.");
+    }
+
+    [Server]
+    public void HandleAncientTelescope(PlayerNetworkAgent agent, string nodeId)
+    {
+        int playerId = _registeredPlayers.IndexOf(agent);
+        var player = _gameState.GetPlayer(playerId);
+
+        var telescope = player.Passives.Find(p => p.PassiveId == "ancient_telescope");
+        if (telescope == null || telescope.IsExhausted) return;
+
+        // Mark the node to be revealed in next turn's snapshot
+        // Store target node in TargetPermanentId as a general string slot
+        telescope.TargetPermanentId = nodeId;
+        telescope.IsExhausted = true; // one use per turn — reset at TurnStart
+
+        StateRelay.Instance.BroadcastToAll();
+        Debug.Log($"[GameManager] Player {playerId} used Ancient Telescope on node {nodeId}.");
+    }
+
+    private void ResetPassiveExhausted(PlayerState player, string passiveId)
+    {
+        var passive = player.Passives.Find(p => p.PassiveId == passiveId);
+        if (passive != null) passive.IsExhausted = false;
     }
 }

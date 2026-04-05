@@ -11,15 +11,12 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- MIDDLE: Description -->
-        <ui:VisualElement name="card-art" class="card-art">
-            <ui:Label name="flavour-text" text="" class="flavour-text"/>
-        </ui:VisualElement>
+        <!-- MIDDLE: Art placeholder -->
+        <ui:VisualElement name="card-art" class="card-art"/>
 
-        <!-- BOTTOM: Speed (Queueable only) + Flavour -->
+        <!-- BOTTOM: Speed -->
         <ui:VisualElement name="card-footer" class="card-footer">
             <ui:Label name="speed-label" text="" class="speed-label"/>
         </ui:VisualElement>
-
     </ui:VisualElement>
 </ui:UXML>

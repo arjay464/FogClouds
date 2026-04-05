@@ -8,6 +8,7 @@ public class SteamLobbyManager : MonoBehaviour
 
     private const string HostAddressKey = "HostAddress";
     private CSteamID _lobbyID;
+    private bool _isHosting; // set synchronously in OnLobbyCreated, before StartHost()
 
     // Callbacks
     private Callback<LobbyCreated_t> _lobbyCreated;
@@ -51,6 +52,8 @@ public class SteamLobbyManager : MonoBehaviour
         }
 
         _lobbyID = new CSteamID(callback.m_ulSteamIDLobby);
+        _isHosting = true; // set BEFORE StartHost so OnLobbyEntered guard works
+
         SteamMatchmaking.SetLobbyData(_lobbyID, HostAddressKey,
             SteamUser.GetSteamID().ToString());
 
@@ -63,16 +66,15 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void OnJoinRequested(GameLobbyJoinRequested_t callback)
     {
-        // Fired when the player accepts a Steam invite
         SteamMatchmaking.JoinLobby(callback.m_steamIDLobby);
     }
 
     private void OnLobbyEntered(LobbyEnter_t callback)
     {
-        if (NetworkServer.active) return;
+        if (_isHosting) return; // host's own OnLobbyEntered — nothing to do
 
-        string hostAddress = SteamMatchmaking.GetLobbyData(
-            new CSteamID(callback.m_ulSteamIDLobby), HostAddressKey);
+        var lobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+        string hostAddress = SteamMatchmaking.GetLobbyData(lobbyId, HostAddressKey);
 
         if (string.IsNullOrEmpty(hostAddress))
         {
@@ -91,5 +93,6 @@ public class SteamLobbyManager : MonoBehaviour
     {
         if (_lobbyID.IsValid())
             SteamMatchmaking.LeaveLobby(_lobbyID);
+        _isHosting = false;
     }
 }

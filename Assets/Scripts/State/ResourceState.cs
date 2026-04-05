@@ -21,6 +21,8 @@ namespace FogClouds
         // Has no inherent maximum unless a card/upgrade imposes one.
         public int PersistentResource;
 
+        public int BonusPerTurnResource;
+
         public ResourceState() { }
 
         public ResourceState(int perTurnMax, int persistent = 0)
@@ -28,11 +30,12 @@ namespace FogClouds
             PerTurnResourceMax = perTurnMax;
             PerTurnResource = perTurnMax;
             PersistentResource = persistent;
+            BonusPerTurnResource = 0;
         }
         // Resets PerTurnResource to its maximum. Called at TurnStart.
         public void RefreshPerTurn()
         {
-            PerTurnResource = PerTurnResourceMax;
+            PerTurnResource = PerTurnResourceMax + BonusPerTurnResource;
         }
 
         // Returns a deep copy. Used when building TurnStartSnapshot.
@@ -42,7 +45,8 @@ namespace FogClouds
             {
                 PerTurnResource = this.PerTurnResource,
                 PerTurnResourceMax = this.PerTurnResourceMax,
-                PersistentResource = this.PersistentResource
+                PersistentResource = this.PersistentResource,
+                BonusPerTurnResource = this.BonusPerTurnResource
             };
         }
     }

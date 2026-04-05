@@ -57,6 +57,12 @@ namespace FogClouds
         public bool GameOver;
         public int WinnerPlayerId; // -1 = no winner yet
 
+        // Blood Mirror — effect ID of the last card to resolve
+        public string LastResolvedEffectId;
+
+        // Brand of Fragility — reduces next damage-dealing card's damage by this amount
+        public int NextDamageReduction;
+
         //RNG
         // Server-side seeded RNG. Used for speed tie resolution, offer generation, etc.
         // Seed is logged at game start for replay/debug.
@@ -121,7 +127,7 @@ namespace FogClouds
 
         // Adds a card to the specified player's queue and re-sorts by speed (descending).
         // Called during MainPhase when a player plays a Queueable card.
-        public void EnqueueCard(int playerId, CardInstance card, bool wasUpcast = false)
+        public void EnqueueCard(int playerId, CardInstance card, bool wasUpcast = false, int targetInstanceId = -1)
         {
             var queue = GetQueue(playerId);
             var player = GetPlayer(playerId);
@@ -142,6 +148,9 @@ namespace FogClouds
                     case "pact_of_the_devil":
                         bonusDamage += passive.StackCount;
                         break;
+                    case "accelerator":
+                        speed += 10 * passive.StackCount;
+                        break;
                 }
             }
 
@@ -149,7 +158,8 @@ namespace FogClouds
             {
                 TieBreaker = Rng.Next(),
                 BonusDamage = bonusDamage,
-                WasUpcast = wasUpcast
+                WasUpcast = wasUpcast,
+                TargetInstanceId = targetInstanceId
             };
 
             queue.Add(entry);
@@ -232,7 +242,21 @@ namespace FogClouds
 
             destroyer.Silver += 3;
 
+            if (destroyerPlayerId != target.OwnerId)
+            {
+                foreach (var passive in owner.Passives)
+                {
+                    var effect = PassiveRegistry.Instance.GetEffect(passive.PassiveId);
+                    effect?.OnPermanentDestroyed(owner, target, destroyerPlayerId, this);
+                }
+            }
+
             Debug.Log($"[GameState] Player {destroyerPlayerId} destroyed {target.DisplayName}, earned 3 Silver.");
+        }
+
+        public void AssignPermanentInstanceId(BoardPermanent permanent)
+        {
+            permanent.InstanceId = GenerateInstanceId();
         }
     }
 }

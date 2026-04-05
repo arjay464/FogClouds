@@ -1,9 +1,13 @@
+.root {
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    overflow: visible;
+}
+
 /* ── Top Bar ─────────────────────────────────────────────────── */
 .top-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    flex-shrink: 0;
     height: 32px;
     flex-direction: row;
     justify-content: center;
@@ -26,10 +30,7 @@
 }
 /* ── Opponent Bar ────────────────────────────────────────────── */
 .opponent-bar {
-    position: absolute;
-    top: 32px;
-    left: 0;
-    right: 0;
+    flex-shrink: 0;
     height: 52px;
     flex-direction: row;
     align-items: center;
@@ -122,12 +123,9 @@
 }
 
 .board-area {
-    position: absolute;
-    top: 84px;
-    left: 0;
-    right: 0;
-    bottom: 260px;   
+    flex: 1;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .board-zone {
@@ -210,15 +208,24 @@
     border-radius: 6px;
 }
 
+.content-area {
+    flex: 1;
+    flex-direction: row;
+    overflow: hidden;
+}
+
+.left-col {
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 /* ── Queue Area ──────────────────────────────────────────────── */
 .queue-area {
-    position: absolute;
-    right: 8px;
-    top: 40px;
-    bottom: 168px;
-    width: 140px;
+    flex-shrink: 0;
+    width: 148px;
     flex-direction: column;
-    align-items: flex-end;
+    padding: 4px 8px 4px 0;
 }
 
 .queue-panel {
@@ -245,21 +252,16 @@
 
 /* ── Hand Area ───────────────────────────────────────────────── */
 .hand-area {
-    position: absolute;
-    bottom: 130px;
-    left: 200px;
-    right: 160px;
+    flex-shrink: 0;
     height: 130px;
     flex-direction: row;
     justify-content: center;
+    overflow: visible;
 }
 
 /* ── Passives Shelf: thin horizontal strip under hand ────────── */
 .passives-shelf {
-    position: absolute;
-    bottom: 100px;
-    left: 200px;
-    right: 160px;
+    flex-shrink: 0;
     height: 28px;
     flex-direction: row;
     align-items: center;
@@ -270,12 +272,10 @@
     padding: 2px 6px;
 }
 
+
 /* ── Bottom Bar ──────────────────────────────────────────────── */
 .bottom-bar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    flex-shrink: 0;
     height: 100px;
     flex-direction: row;
     align-items: center;
@@ -284,7 +284,6 @@
     border-color: rgba(80, 80, 100, 0.5);
     padding: 6px 8px;
 }
-
 /* ── Draw / Discard Piles ────────────────────────────────────── */
 .pile {
     width: 44px;
@@ -1059,4 +1058,114 @@
 .auction-submit-row {
     flex-direction: row;
     justify-content: flex-end;
+}
+/* ── Passive Chips ───────────────────────────────────────────── */
+.passive-chip {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(40, 40, 55, 0.9);
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: rgba(100, 100, 140, 0.5);
+    padding: 2px 8px 2px 4px;
+    margin-right: 6px;
+}
+
+.passive-chip-passive {
+    border-color: rgba(80, 80, 100, 0.4);
+    background-color: rgba(30, 30, 40, 0.7);
+}
+
+.passive-chip-exhausted {
+    opacity: 0.4;
+}
+
+.passive-chip-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: rgb(120, 160, 220);
+    margin-right: 5px;
+    flex-shrink: 0;
+}
+
+.passive-chip-passive .passive-chip-dot {
+    background-color: rgb(100, 140, 100);
+}
+
+.passive-chip-label {
+    font-size: 10px;
+    color: rgb(200, 200, 220);
+}
+
+.passive-chip-stack {
+    font-size: 9px;
+    color: rgb(180, 180, 100);
+    margin-left: 4px;
+}
+
+/* ── Targeting highlights ────────────────────────────────────── */
+.permanent-chip-targeted {
+    border-color: rgb(220, 180, 40);
+    border-width: 2px;
+    background-color: rgba(80, 65, 10, 0.9);
+    scale: 1.08 1.08;
+    transition-property: scale;
+    transition-duration: 0.15s;
+}
+
+.permanent-chip-targeted:hover {
+    background-color: rgba(120, 95, 15, 0.95);
+    border-color: rgb(255, 220, 60);
+}
+
+.card-targeted {
+    border-color: rgb(220, 180, 40);
+    border-width: 2px;
+    opacity: 1.0;
+}
+
+.card-targeted:hover {
+    border-color: rgb(255, 220, 60);
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────── */
+.tooltip-box {
+    position: absolute;
+    background-color: rgba(18, 18, 28, 0.97);
+    border-width: 1px;
+    border-color: rgba(120, 120, 160, 0.7);
+    border-radius: 4px;
+    padding: 8px 10px;
+    max-width: 220px;
+    min-width: 120px;
+}
+
+.tooltip-title {
+    color: rgb(220, 220, 235);
+    font-size: 11px;
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+    white-space: normal;
+}
+
+.tooltip-body {
+    color: rgb(160, 170, 185);
+    font-size: 10px;
+    white-space: normal;
+}
+.status-effect-chip {
+    border-color: rgba(180, 100, 100, 0.6);
+}
+
+.status-dot-bleed {
+    background-color: rgb(200, 60, 60);
+}
+
+.status-dot-poison {
+    background-color: rgb(80, 180, 80);
+}
+
+.status-dot-shield_lock {
+    background-color: rgb(80, 130, 200);
 }

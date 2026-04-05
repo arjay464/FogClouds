@@ -8,7 +8,9 @@ namespace FogClouds
     {
         public string PassiveId;
         public string DisplayName;
-        public int StackCount; // some passives stack
+        public int StackCount;
+        public string TargetPermanentId;
+        public bool IsExhausted;
 
         public Passive() { }
 
@@ -18,7 +20,9 @@ namespace FogClouds
             {
                 PassiveId = this.PassiveId,
                 DisplayName = this.DisplayName,
-                StackCount = this.StackCount
+                StackCount = this.StackCount,
+                TargetPermanentId = this.TargetPermanentId,
+                IsExhausted = this.IsExhausted
             };
         }
     }

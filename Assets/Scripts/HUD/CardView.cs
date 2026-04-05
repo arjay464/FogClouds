@@ -18,7 +18,6 @@ public class CardView : VisualElement
     private VisualElement _daggerPips;
     private Label _bloodCost;
     private Label _speedLabel;
-    private Label _flavourLabel;
 
     private static Dictionary<string, CardDefinition> _defCache = new();
 
@@ -33,10 +32,19 @@ public class CardView : VisualElement
         _daggerPips = this.Q<VisualElement>("dagger-pips");
         _bloodCost = this.Q<Label>("blood-cost");
         _speedLabel = this.Q<Label>("speed-label");
-        _flavourLabel = this.Q<Label>("flavour-text");
 
         Populate(data);
         RegisterCallbacks();
+
+        RegisterCallback<PointerEnterEvent>(evt =>
+        {
+            var def = LoadDef(data.CardId);
+            string body = def?.FlavourText ?? "";
+            if (data.Type == CardType.Queueable)
+                body += body.Length > 0 ? $"\n\nSPD {data.ModifiedSpeed}" : $"SPD {data.ModifiedSpeed}";
+            TooltipController.Instance?.Show(data.DisplayName ?? data.CardId, body, evt.position);
+        });
+        RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
     }
 
     public void Populate(CardInstanceView data)
@@ -70,21 +78,15 @@ public class CardView : VisualElement
         {
             case CardType.Queueable:
                 cardRoot.AddToClassList("card-queueable");
-                _flavourLabel.text = def != null ? def.FlavourText : "";
-                _flavourLabel.style.display = DisplayStyle.Flex;
                 _speedLabel.text = $"SPD {data.ModifiedSpeed}";
                 _speedLabel.style.display = DisplayStyle.Flex;
                 break;
             case CardType.Instant:
                 cardRoot.AddToClassList("card-instant");
-                _flavourLabel.text = def != null ? def.FlavourText : "";
-                _flavourLabel.style.display = DisplayStyle.Flex;
                 _speedLabel.style.display = DisplayStyle.None;
                 break;
             case CardType.Permanent:
                 cardRoot.AddToClassList("card-permanent");
-                _flavourLabel.text = def != null ? def.FlavourText : "";
-                _flavourLabel.style.display = DisplayStyle.Flex;
                 _speedLabel.style.display = DisplayStyle.None;
                 break;
         }

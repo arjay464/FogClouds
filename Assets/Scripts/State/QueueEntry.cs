@@ -28,6 +28,7 @@ namespace FogClouds
 
         public int BonusDamage; // from passives like Blessing of Valor
         public bool WasUpcast;
+        public int TargetInstanceId; // -1 = no target
 
         public QueueEntry() { }
 
@@ -38,6 +39,7 @@ namespace FogClouds
             Card = card;
             CurrentSpeed = card.ModifiedSpeed;
             QueuePosition = queuePosition;
+            TargetInstanceId = -1; //default no target
         }
 
         public override string ToString()

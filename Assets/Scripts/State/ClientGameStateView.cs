@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Mirror.BouncyCastle.Bcpg;
 using UnityEngine;
 
 namespace FogClouds
@@ -19,6 +20,7 @@ namespace FogClouds
         public CardType Type;
         public ResourceCost Cost;
         public bool IsAttack;
+        public string EffectId;
     }
 
     // The complete state packet sent to a client each time state is broadcast.
@@ -121,10 +123,14 @@ namespace FogClouds
         // Null if InsightTreeOpponent flag is false.
         public InsightTreeState InsightTree;
 
+        //List of status effects
+        public List<StatusEffect> StatusEffects;
+
         public bool UpgradeChoiceSubmitted;
         public bool PowerCategoryCommitted;
         public bool StrategyCategoryCommitted;
         public bool InsightCategoryCommitted;
+        public bool ShopDoneSubmitted;
     }
 
     // A queue entry as seen by a client.
@@ -212,7 +218,9 @@ namespace FogClouds
                 UpgradeChoiceSubmitted = viewer.UpgradeChoiceSubmitted,
                 PowerCategoryCommitted = viewer.PowerCategoryCommitted,
                 InsightCategoryCommitted = viewer.InsightCategoryCommitted,
-                StrategyCategoryCommitted = viewer.StrategyCategoryCommitted
+                StrategyCategoryCommitted = viewer.StrategyCategoryCommitted,
+                ShopDoneSubmitted = viewer.ShopDoneSubmitted,
+                StatusEffects = viewer.StatusEffects
             };
         }
 
@@ -314,6 +322,7 @@ namespace FogClouds
                 Type = c?.Type ?? CardType.Queueable,
                 Cost = c?.Cost ?? new ResourceCost(),
                 IsAttack = c.IsAttack,
+                EffectId = c?.EffectId
             };
         }
 

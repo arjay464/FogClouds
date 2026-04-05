@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace FogClouds
 {
+    [CreateAssetMenu(menuName = "FogClouds/PassiveDefinition")]
     public class PassiveDefinition : ScriptableObject
     {
         public string PassiveId;

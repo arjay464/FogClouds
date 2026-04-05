@@ -26,6 +26,17 @@ public class PassiveRegistry : MonoBehaviour
         _passives["blessing_of_clarity"] = new BlessingOfClarityPassive();
         _passives["blessing_of_grace"] = new BlessingOfGracePassive();
         _passives["blessing_of_fortitude"] = new BlessingOfFortitudePassive();
+        _passives["season_of_harvest"] = new SeasonOfHarvestPassive();
+        _passives["accelerator"] = new AcceleratorPassive();
+        _passives["slight_of_hand"] = new SlightOfHandPassive();
+        _passives["clutterstorm"] = new ClutterstormPassive();
+        _passives["unbroken_chain"] = new UnbrokenChainPassive();
+        _passives["natures_eye"] = new NaturesEyePassive();
+        _passives["market_crash"] = new MarketCrashPassive();
+        _passives["blessed_diary"] = new BlessedDiaryPassive();
+        _passives["ancient_telescope"] = new AncientTelescopePassive();
+        _passives["ceremonial_dagger"] = new CeremonialDaggerPassive();
+        _passives["cha_cha_lifelong_companion"] = new ChaChaLifelongCompanionPassive();
         Debug.Log($"[PassiveRegistry] Registered {_passives.Count} passives.");
     }
 

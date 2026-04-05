@@ -3,6 +3,7 @@ using UnityEngine.UIElements;
 using FogClouds;
 using System.Collections.Generic;
 using System.Linq;
+using Telepathy;
 
 public class GameHUDController : MonoBehaviour
 {
@@ -54,6 +55,7 @@ public class GameHUDController : MonoBehaviour
     private Label _opponentPersistentLabel;
     private Label _opponentSightLabel;
     private Label _opponentSilverLabel;
+
     // INSIGHT overlay
     private VisualElement _insightOverlay;
     private VisualElement _insightContent;
@@ -91,6 +93,7 @@ public class GameHUDController : MonoBehaviour
     private VisualElement _shopColorlessRow;
     private VisualElement _shopPassivesRow;
     private VisualElement _shopServicesRow;
+    private Label _shopWaitingLabel;
 
     // Auction panel
     private VisualElement _auctionPanel;
@@ -113,6 +116,15 @@ public class GameHUDController : MonoBehaviour
     private Dictionary<string, CharacterData> _characterCache = new();
     private Dictionary<string, CardDefinition> _cardDefCache = new();
     private InsightTreeDefinition _cachedInsightTree;
+
+    //passives
+    private VisualElement _passivesShelf;
+
+    //targeting
+    private bool _targetingActive = false;
+    private System.Action<int> _onTargetSelected;
+    private System.Action _onTargetCancelled;
+    private List<VisualElement> _highlightedChips = new();
 
     void Start()
     {
@@ -174,6 +186,7 @@ public class GameHUDController : MonoBehaviour
         _shopColorlessRow = _root.Q<VisualElement>("shop-colorless-row");
         _shopPassivesRow = _root.Q<VisualElement>("shop-passives-row");
         _shopServicesRow = _root.Q<VisualElement>("shop-services-row");
+        _shopWaitingLabel = _root.Q<Label>("shop-waiting-label");
         _auctionPanel = _root.Q<VisualElement>("auction-panel");
         _auctionSilverLabel = _root.Q<Label>("auction-silver-label");
         _auctionCardsRow = _root.Q<VisualElement>("auction-cards-row");
@@ -184,6 +197,7 @@ public class GameHUDController : MonoBehaviour
         _eventDescLabel = _root.Q<Label>("event-desc-label");
         _eventContent = _root.Q<VisualElement>("event-content");
         _eventWaitingLabel = _root.Q<Label>("event-waiting-label");
+        _passivesShelf = _root.Q<VisualElement>("passives-shelf");
 
         // Tab buttons
         _tabPastUpgrades.clicked += () => OpenInsightTab(0);
@@ -211,7 +225,9 @@ public class GameHUDController : MonoBehaviour
         _root.Q<Button>("strategy-btn").clicked += () => PlayerNetworkAgent.LocalAgent?.CmdCommitStrategy();
         _root.Q<Button>("insight-btn-roguelike").clicked += OnRoguelikeInsightClicked;
         _root.Q<Button>("shop-done-btn").clicked += () =>
-            PlayerNetworkAgent.LocalAgent?.CmdShopDone();
+            {
+                PlayerNetworkAgent.LocalAgent?.CmdShopDone();
+            };
         _root.Q<Button>("tree-overlay-close").clicked += () =>
         {
             _treeOverlay.style.display = DisplayStyle.None;
@@ -230,6 +246,9 @@ public class GameHUDController : MonoBehaviour
 
         var opponentHandController = GetComponent<OpponentHandController>();
         opponentHandController?.Initialize(_root);
+
+        var tooltipController = GetComponent<TooltipController>();
+        tooltipController?.Initialize(_root);
 
         if (ClientStateManager.Instance != null)
         {
@@ -276,12 +295,6 @@ public class GameHUDController : MonoBehaviour
 
     private void DoRefresh(ClientGameStateView view)
     {
-
-        if (view.GameOver)
-        {
-            ShowGameOverScreen(view);
-            return;
-        }
 
         var own = view.OwnState;
         if (own == null) return;
@@ -334,8 +347,15 @@ public class GameHUDController : MonoBehaviour
         RefreshAuctionPanel(view);
         RefreshEventPanel(view);
 
-        // Show passive button only if player has interactive passives (Phase 5+)
+        // Show passive button only if player has interactive passives
         _passiveButton.style.display = DisplayStyle.None;
+        RefreshPassivesShelf(own, view);
+
+        if (view.GameOver)
+        {
+            ShowGameOverScreen(view);
+            return;
+        }
     }
 
     private void RefreshPips(ResourceState resources)
@@ -542,11 +562,18 @@ public class GameHUDController : MonoBehaviour
                 for (int i = 0; i < offerList.Count; i++)
                 {
                     int index = i;
+                    string cardId = offerList[i];
                     string displayName = nameList != null && i < nameList.Count ? nameList[i] : offerList[i];
 
                     var btn = new Button();
                     btn.AddToClassList("card-offer-btn");
                     btn.text = displayName;
+
+                    string tooltipBody = GetCardTooltipBody(cardId, CardType.Queueable, 0);
+                    btn.RegisterCallback<PointerEnterEvent>(evt =>
+                        TooltipController.Instance?.Show(displayName, tooltipBody, evt.position));
+                    btn.RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
+
                     btn.clicked += () =>
                     {
                         if (own.PowerCategoryCommitted)
@@ -764,13 +791,12 @@ public class GameHUDController : MonoBehaviour
         _insightContent.Add(label);
     }
 
-    private VisualElement MakeMiniCard(string displayName)
+    private VisualElement MakeMiniCard(string displayName, CardInstanceView data = null)
     {
         var wrap = new VisualElement();
         wrap.AddToClassList("mini-card-wrap");
 
-        // Reuse CardView template at smaller scale
-        var template = Resources.Load<VisualTreeAsset>("UI/CardView"); //cache?
+        var template = Resources.Load<VisualTreeAsset>("UI/CardView");
         template.CloneTree(wrap);
 
         var cardRoot = wrap.Q<VisualElement>("card-root");
@@ -782,7 +808,16 @@ public class GameHUDController : MonoBehaviour
         wrap.Q<VisualElement>("dagger-pips").Clear();
         wrap.Q<Label>("blood-cost").style.display = DisplayStyle.None;
         wrap.Q<Label>("speed-label").style.display = DisplayStyle.None;
-        wrap.Q<Label>("flavour-text").style.display = DisplayStyle.None;
+        var flavour = wrap.Q<Label>("flavour-text");
+        if (flavour != null) flavour.style.display = DisplayStyle.None;
+
+        if (data != null)
+        {
+            string body = GetCardTooltipBody(data.CardId, data.Type, data.ModifiedSpeed);
+            wrap.RegisterCallback<PointerEnterEvent>(evt =>
+                TooltipController.Instance?.Show(displayName, body, evt.position));
+            wrap.RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
+        }
 
         return wrap;
     }
@@ -860,7 +895,7 @@ public class GameHUDController : MonoBehaviour
             }
 
             foreach (var card in list)
-                _pileContent.Add(MakeMiniCard(card.DisplayName ?? card.CardId));
+                _pileContent.Add(MakeMiniCard(card.DisplayName ?? card.CardId, card));
         });
     }
 
@@ -1163,7 +1198,8 @@ public class GameHUDController : MonoBehaviour
                         permanent.DisplayName,
                         permanent.TurnsRemaining,
                         permanent.ProtectedThisTurn,
-                        hidden: false));
+                        hidden: false,
+                        permanent.InstanceId));
 
             var badge = _root.Q<Label>("own-board-count");
             if (badge != null)
@@ -1190,7 +1226,8 @@ public class GameHUDController : MonoBehaviour
                         isHidden ? "???" : permanent.DisplayName,
                         isHidden ? -2 : permanent.TurnsRemaining,
                         permanent.ProtectedThisTurn,
-                        hidden: isHidden));
+                        hidden: isHidden,
+                        permanent.InstanceId));
                 }
 
             var badge = _root.Q<Label>("opponent-board-count");
@@ -1202,9 +1239,10 @@ public class GameHUDController : MonoBehaviour
         });
     }
 
-    private VisualElement MakePermanentChip(string name, int turnsRemaining, bool protected_, bool hidden)
+    private VisualElement MakePermanentChip(string name, int turnsRemaining, bool protected_, bool hidden, int instanceId = 0)
     {
         var chip = new VisualElement();
+        chip.userData = instanceId;
         chip.AddToClassList("permanent-chip");
         if (hidden) chip.AddToClassList("permanent-chip-hidden");
         if (protected_) chip.AddToClassList("permanent-chip-protected");
@@ -1227,14 +1265,38 @@ public class GameHUDController : MonoBehaviour
             chip.Add(shieldLabel);
         }
 
+        // Tooltip
+        string tooltipBody = hidden ? "Hidden permanent." : GetPermanentTooltip(name);
+        chip.RegisterCallback<PointerEnterEvent>(evt =>
+            TooltipController.Instance?.Show(name, tooltipBody, evt.position));
+        chip.RegisterCallback<PointerLeaveEvent>(_ =>
+            TooltipController.Instance?.Hide());
+
         return chip;
     }
+
+    private string GetPermanentTooltip(string displayName) => displayName switch
+    {
+        "Cha Cha - Loyal Chupacabra" => "Outgoing attacks deal +1 damage. Duration: 2 turns.",
+        "Cursed Goblet" => "Reduces incoming damage by 20%. Infinite duration.",
+        "Totem of Sharpness" => "Attacks that cost a Dagger or were upcast deal +3 damage. Duration: 2 turns.",
+        "Mirror of Moonlight" => "Copies all instants you play into your queue at speed 2. Duration: 2 turns.",
+        "Totem of Sacrifice" => "Reduces blood costs by 1 (minimum 1). Infinite duration.",
+        "Totem of Progress" => "Upcasted cards draw 1 card on resolution. Duration: 3 turns.",
+        "Totem of Warding" => "When opponent deals damage to you, apply 1 Bleed to them. Duration: 2 turns.",
+        _ => "No description available."
+    };
 
     private void RefreshShopPanel(ClientGameStateView view)
     {
         bool isShop = view.CurrentPhase == TurnPhase.ShopPhase;
         _shopPanel.style.display = isShop ? DisplayStyle.Flex : DisplayStyle.None;
         if (!isShop) return;
+
+        var shopDoneBtn = _root.Q<Button>("shop-done-btn");
+        bool submitted = view.OwnState?.ShopDoneSubmitted ?? false;
+        shopDoneBtn.SetEnabled(!submitted);
+        _shopWaitingLabel.style.display = submitted ? DisplayStyle.Flex : DisplayStyle.None;
 
         var offer = view.OwnShopOffer;
         var own = view.OwnState;
@@ -1314,7 +1376,7 @@ public class GameHUDController : MonoBehaviour
         });
     }
 
-    private VisualElement MakeShopCardItem(string name, int price, int silver, bool sold, System.Action onBuy)
+    private VisualElement MakeShopCardItem(string name, int price, int silver, bool sold, System.Action onBuy, CardInstanceView data = null)
     {
         var item = new VisualElement();
         item.AddToClassList("shop-item");
@@ -1343,6 +1405,14 @@ public class GameHUDController : MonoBehaviour
             btn.SetEnabled(silver >= price);
             btn.clicked += onBuy;
             item.Add(btn);
+        }
+
+        if (data != null)
+        {
+            string body = GetCardTooltipBody(data.CardId, data.Type, data.ModifiedSpeed);
+            item.RegisterCallback<PointerEnterEvent>(evt =>
+                TooltipController.Instance?.Show(name, body, evt.position));
+            item.RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
         }
 
         return item;
@@ -1535,7 +1605,7 @@ public class GameHUDController : MonoBehaviour
         foreach (var card in allCards)
         {
             int id = card.InstanceId;
-            var item = MakeShopCardItem(card.DisplayName ?? card.CardId, 0, 999, false, () => { });
+            var item = MakeShopCardItem(card.DisplayName ?? card.CardId, 0, 999, false, () => { }, card);
             item.style.opacity = 1f;
 
             // Replace buy button with toggle select
@@ -1692,7 +1762,7 @@ public class GameHUDController : MonoBehaviour
 
     private void BuildWritingOnTheWallUI(ClientGameStateView view)
     {
-        _eventDescLabel.text = "Your top 5 cards are revealed. Choose any to discard permanently.";
+        _eventDescLabel.text = "Your top 5 cards are revealed. Choose any number to discard.";
         var selected = new HashSet<int>();
         var cards = view.EventRevealedCards;
 
@@ -1893,5 +1963,194 @@ public class GameHUDController : MonoBehaviour
             msg.style.marginTop = 20;
             _pileContent.Add(msg);
         });
+    }
+
+    private void RefreshPassivesShelf(PlayerStateView own, ClientGameStateView view)
+    {
+        _passivesShelf.Clear();
+        if (own?.Passives == null) return;
+
+        foreach (var passive in own.Passives)
+        {
+            bool isInteractive = IsInteractivePassive(passive.PassiveId);
+            bool isExhausted = passive.IsExhausted;
+            bool unavailable = passive.PassiveId == "slight_of_hand" && view.OwnState != null &&
+                               (view.CurrentPhase != TurnPhase.MainPhase);
+
+            var chip = new VisualElement();
+            chip.AddToClassList("passive-chip");
+            if (isExhausted) chip.AddToClassList("passive-chip-exhausted");
+            if (!isInteractive) chip.AddToClassList("passive-chip-passive");
+
+            var dot = new VisualElement();
+            dot.AddToClassList("passive-chip-dot");
+            chip.Add(dot);
+
+            var label = new Label(passive.DisplayName);
+            label.AddToClassList("passive-chip-label");
+            chip.Add(label);
+
+            // Tooltip
+            var passiveDef = Resources.Load<PassiveDefinition>($"Passives/{passive.PassiveId}");
+            string tooltipBody = passiveDef != null ? passiveDef.Description : passive.PassiveId;
+            chip.RegisterCallback<PointerEnterEvent>(evt =>
+                TooltipController.Instance?.Show(passive.DisplayName, tooltipBody, evt.position));
+            chip.RegisterCallback<PointerLeaveEvent>(_ =>
+                TooltipController.Instance?.Hide());
+
+            if (passive.StackCount > 0)
+            {
+                var stackLabel = new Label($"x{passive.StackCount}");
+                stackLabel.AddToClassList("passive-chip-stack");
+                chip.Add(stackLabel);
+            }
+
+            if (isInteractive && !isExhausted && !unavailable)
+                chip.RegisterCallback<ClickEvent>(_ => OnPassiveChipClicked(passive));
+
+            _passivesShelf.Add(chip);
+        }
+
+        // ── Status effects (debug display) ──────────────────────────
+        if (own?.StatusEffects == null) return;
+
+        foreach (var effect in own.StatusEffects)
+        {
+            var chip = new VisualElement();
+            chip.AddToClassList("passive-chip");
+            chip.AddToClassList("status-effect-chip");
+
+            var dot = new VisualElement();
+            dot.AddToClassList("passive-chip-dot");
+            dot.AddToClassList($"status-dot-{effect.EffectId}");
+            chip.Add(dot);
+
+            string displayName = effect.EffectId switch
+            {
+                "bleed" => "Bleed",
+                "shield_lock" => "Shield Lock",
+                "devilbound" => "Devilbound",
+                _ => effect.EffectId
+            };
+
+            string durationText = effect.Duration == -1 ? "∞" : $"{effect.Duration}t";
+
+            var label = new Label($"{displayName} {effect.Value} ({durationText})");
+            label.AddToClassList("passive-chip-label");
+            chip.Add(label);
+
+            chip.RegisterCallback<PointerEnterEvent>(evt =>
+                TooltipController.Instance?.Show(displayName,
+                    $"Value: {effect.Value}\nDuration: {durationText}", evt.position));
+            chip.RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
+
+            _passivesShelf.Add(chip);
+        }
+    }
+
+    private bool IsInteractivePassive(string passiveId) => passiveId switch
+    {
+        "slight_of_hand" => true,
+        "market_crash" => true,
+        "blessed_diary" => true,
+        "ancient_telescope" => true,
+        _ => false
+    };
+
+    private void OnPassiveChipClicked(Passive passive)
+    {
+        switch (passive.PassiveId)
+        {
+            case "slight_of_hand":
+                OpenSlightOfHandMenu();
+                break;
+            case "market_crash":
+                PlayerNetworkAgent.LocalAgent?.CmdMarketCrash();
+                break;
+            case "blessed_diary":
+                OpenBlessedDiaryMenu();
+                break;
+            case "ancient_telescope":
+                OpenAncientTelescopeMenu();
+                break;
+        }
+    }
+
+    private void OpenSlightOfHandMenu() { }
+    private void OpenBlessedDiaryMenu() { }
+    private void OpenAncientTelescopeMenu() { }
+
+    public void BeginTargeting(
+        List<BoardPermanent> targets,  // valid targets to highlight
+        bool targetOwnBoard,           // true = own board, false = opponent board
+        System.Action<int> onSelected,
+        System.Action onCancelled)
+    {
+        _targetingActive = true;
+        _onTargetSelected = onSelected;
+        _onTargetCancelled = onCancelled;
+        _highlightedChips.Clear();
+
+        var zone = targetOwnBoard ? _ownBoardZone : _opponentBoardZone;
+
+        // Highlight valid target chips
+        zone.schedule.Execute(() =>
+        {
+            foreach (var child in zone.Children())
+            {
+                // Match chip to target by userData InstanceId we'll store on the chip
+                if (child.userData is int instanceId &&
+                    targets.Exists(t => t.InstanceId == instanceId))
+                {
+                    child.AddToClassList("permanent-chip-targeted");
+                    int captured = instanceId;
+                    child.RegisterCallback<ClickEvent>(OnTargetChipClicked);
+                    child.userData = captured;
+                    _highlightedChips.Add(child);
+                }
+            }
+
+            // Click anywhere on root to cancel
+            _root.RegisterCallback<ClickEvent>(OnTargetCancelClicked);
+        });
+    }
+
+    private void OnTargetChipClicked(ClickEvent evt)
+    {
+        if (!_targetingActive) return;
+        if (evt.currentTarget is VisualElement chip && chip.userData is int instanceId)
+        {
+            EndTargeting();
+            _onTargetSelected?.Invoke(instanceId);
+            evt.StopPropagation();
+        }
+    }
+
+    private void OnTargetCancelClicked(ClickEvent evt)
+    {
+        if (!_targetingActive) return;
+        EndTargeting();
+        _onTargetCancelled?.Invoke();
+    }
+
+    private void EndTargeting()
+    {
+        _targetingActive = false;
+        foreach (var chip in _highlightedChips)
+        {
+            chip.RemoveFromClassList("permanent-chip-targeted");
+            chip.UnregisterCallback<ClickEvent>(OnTargetChipClicked);
+        }
+        _highlightedChips.Clear();
+        _root.UnregisterCallback<ClickEvent>(OnTargetCancelClicked);
+    }
+
+    private string GetCardTooltipBody(string cardId, CardType type, int speed)
+    {
+        var def = Resources.Load<CardDefinition>($"Cards/{cardId}");
+        string body = def?.FlavourText ?? "";
+        if (type == CardType.Queueable)
+            body += body.Length > 0 ? $"\n\nSPD {speed}" : $"SPD {speed}";
+        return body;
     }
 }

@@ -14,10 +14,17 @@ namespace FogClouds
     {
         int ModifyDraw(int drawCount);
     }
+    // New interface — fires when owner takes damage from opponent
+    public interface IDamageTakenReactor
+    {
+        void OnDamageTakenFromOpponent(PlayerState owner, PlayerState attacker, int amount, GameState state);
+    }
+
 
     [Serializable]
     public class BoardPermanent
     {
+        public int InstanceId;
         public string PermanentId;
         public string DisplayName;
         public int OwnerId;
@@ -38,6 +45,7 @@ namespace FogClouds
         {
             return new BoardPermanent
             {
+                InstanceId = this.InstanceId,
                 PermanentId = this.PermanentId,
                 DisplayName = this.DisplayName,
                 OwnerId = this.OwnerId,
@@ -189,5 +197,27 @@ namespace FogClouds
 
         public override BoardPermanent Clone() =>
             new TotemOfProgress(OwnerId, TurnsRemaining);
+    }
+
+    // Totem of Warding — when opponent deals damage to you, apply 1 bleed to them. Duration: 2.
+    [Serializable]
+    public class TotemOfWarding : BoardPermanent, IDamageTakenReactor
+    {
+        public TotemOfWarding(int ownerId)
+        {
+            PermanentId = "totem_of_warding";
+            DisplayName = "Totem of Warding";
+            OwnerId = ownerId;
+            TurnsRemaining = 2;
+        }
+
+        public void OnDamageTakenFromOpponent(PlayerState owner, PlayerState attacker, int amount, GameState state)
+        {
+            attacker.ApplyStatusEffect(new StatusEffect("bleed", value: 1, duration: -1));
+            Debug.Log($"[TotemOfWarding] Applied 1 Bleed to Player {attacker.PlayerId}.");
+        }
+
+        public override BoardPermanent Clone() =>
+            new TotemOfWarding(OwnerId) { TurnsRemaining = this.TurnsRemaining };
     }
 }

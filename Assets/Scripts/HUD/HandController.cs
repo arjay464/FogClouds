@@ -5,6 +5,8 @@ using System.Collections.Generic;
 
 public class HandController : MonoBehaviour
 {
+
+    private GameHUDController _hud;
     private VisualElement _handArea;
     private VisualElement _playZone;
     private VisualElement _root;
@@ -19,6 +21,9 @@ public class HandController : MonoBehaviour
     private const float CardOverlap = 28f;
     private const float CardWidth = 80f;
     private const float CardHeight = 112f;
+
+    //targeting state
+    public bool IsTargeting => _pendingHandTargetCard != null;
 
     void OnDisable()
     {
@@ -46,6 +51,8 @@ public class HandController : MonoBehaviour
 
         if (ClientStateManager.Instance != null)
             ClientStateManager.Instance.OnStateUpdated += Refresh;
+
+        _hud = FindFirstObjectByType<GameHUDController>();
     }
 
     private void Refresh(ClientGameStateView view)
@@ -73,7 +80,7 @@ public class HandController : MonoBehaviour
     }
 
     private System.Collections.IEnumerator RebuildHand(
-        System.Collections.Generic.List<CardInstanceView> hand)
+        List<CardInstanceView> hand)
     {
         _rebuildInProgress = true;
         yield return null;
@@ -82,8 +89,6 @@ public class HandController : MonoBehaviour
         // Snapshot the hand data before scheduling
         var snapshot = new List<CardInstanceView>(hand);
 
-        // Schedule the mutation through UI Toolkit's own scheduler
-        // This guarantees it runs between repaint passes, never during one
         _handArea.schedule.Execute(() =>
         {
             _handArea.Clear();
@@ -133,6 +138,7 @@ public class HandController : MonoBehaviour
         {
             if (evt.button != 0) return;
             if (_draggedCard != null) return;
+            if (IsTargeting) return;
 
             _draggedCard = card;
             _dragOffset = evt.localPosition;
@@ -243,7 +249,7 @@ public class HandController : MonoBehaviour
             _draggedCard.SetSelected(false);  // snapped back — keep upcast intent
         _draggedCard = null;
 
-        _playZone.style.backgroundColor = new StyleColor(new Color(0f, 0f, 0f, 0f));
+        _playZone.style.backgroundColor = StyleKeyword.Null;
 
         ApplyFanLayout();
     }
@@ -253,6 +259,14 @@ public class HandController : MonoBehaviour
         var data = card.CardData;
         var agent = PlayerNetworkAgent.LocalAgent;
         if (agent == null) return;
+
+        bool needsTarget = _targetingEffects.Contains(data.EffectId);
+
+        if (needsTarget)
+        {
+            BeginTargetedPlay(card);
+            return;
+        }
 
         switch (data.Type)
         {
@@ -275,5 +289,117 @@ public class HandController : MonoBehaviour
             if (card != selected)
                 card.SetSelected(false);
         }
+    }
+
+
+    private static readonly HashSet<string> _targetingEffects = new()
+    {
+        "ferricidium",
+        "lex_noctis",
+        "devovita"
+    };
+
+    private void BeginTargetedPlay(CardView card)
+    {
+        var state = ClientStateManager.Instance?.CurrentState;
+        if (state == null) return;
+
+        var effectId = card.CardData.EffectId;
+        bool targetOwnBoard = effectId == "lex_noctis";
+        bool targetHand = effectId == "devovita";
+
+        if (targetHand)
+        {
+            // Devovita targets hand cards — highlight them differently
+            BeginHandTargeting(card, state);
+            return;
+        }
+
+        var board = targetOwnBoard
+            ? state.OwnState?.Board
+            : state.OpponentState?.Board;
+
+        // Filter valid targets
+        List<BoardPermanent> validTargets;
+        if (effectId == "ferricidium")
+            validTargets = board?.FindAll(p => !p.ProtectedThisTurn) ?? new List<BoardPermanent>();
+        else
+            validTargets = board ?? new List<BoardPermanent>();
+
+        int cardInstanceId = card.CardData.InstanceId;
+        bool isUpcast = card.IsUpcast;
+        bool isQueueable = card.CardData.Type == CardType.Queueable;
+        var agent = PlayerNetworkAgent.LocalAgent;
+
+        _hud.BeginTargeting(
+            validTargets,
+            targetOwnBoard,
+            onSelected: (targetId) =>
+            {
+                if (isQueueable)
+                    agent?.CmdQueueCardWithTarget(cardInstanceId, isUpcast, targetId);
+                else
+                    agent?.CmdPlayInstantWithTarget(cardInstanceId, targetId);
+            },
+            onCancelled: () =>
+            {
+                // Snap card back to hand — it's already there from CompleteDrag
+            }
+        );
+    }
+
+    private void BeginHandTargeting(CardView playedCard, ClientGameStateView state)
+    {
+        var hand = state.OwnState?.Hand;
+        if (hand == null || hand.Count == 0)
+        {
+            PlayerNetworkAgent.LocalAgent?.CmdPlayInstantWithTarget(playedCard.CardData.InstanceId, -1);
+            return;
+        }
+
+        foreach (var cardView in _cardViews)
+        {
+            if (cardView == playedCard) continue;
+            cardView.AddToClassList("card-targeted");
+            cardView.RegisterCallback<ClickEvent>(OnHandTargetClicked);
+        }
+
+        _pendingHandTargetCard = playedCard;
+
+        //defer cancel registration by a frame so the pointer up that played targeting card doesn't also cancel it.
+        _root.schedule.Execute(() =>
+            _root.RegisterCallback<ClickEvent>(OnHandTargetCancelled));
+    }
+
+    private CardView _pendingHandTargetCard;
+
+    private void OnHandTargetClicked(ClickEvent evt)
+    {
+        if (_pendingHandTargetCard == null) return;
+        if (evt.currentTarget is CardView target)
+        {
+            int cardId = _pendingHandTargetCard.CardData.InstanceId;
+            int targetId = target.CardData.InstanceId;
+            EndHandTargeting();
+            PlayerNetworkAgent.LocalAgent?.CmdPlayInstantWithTarget(cardId, targetId);
+            evt.StopPropagation();
+        }
+    }
+
+    private void OnHandTargetCancelled(ClickEvent evt)
+    {
+        if (_pendingHandTargetCard == null) return;
+        EndHandTargeting();
+    }
+
+    private void EndHandTargeting()
+    {
+        foreach (var cardView in _cardViews)
+        {
+            cardView.RemoveFromClassList("card-targeted");
+            cardView.UnregisterCallback<ClickEvent>(OnHandTargetClicked);
+        }
+        _pendingHandTargetCard = null;
+        _root.UnregisterCallback<ClickEvent>(OnHandTargetCancelled);
     }
 }

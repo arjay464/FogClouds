@@ -137,4 +137,39 @@ public class PlayerNetworkAgent : NetworkBehaviour
     {
         GameManager.Instance.HandleCommitStrategy(this);
     }
+
+    [Command]
+    public void CmdMarketCrash()
+    {
+        GameManager.Instance.HandleMarketCrash(this);
+    }
+
+    [Command]
+    public void CmdSlightOfHand(int cardInstanceId)
+    {
+        GameManager.Instance.HandleSlightOfHand(this, cardInstanceId);
+    }
+
+    [Command]
+    public void CmdBlessedDiaryTarget(string permanentId)
+    {
+        GameManager.Instance.HandleBlessedDiaryTarget(this, permanentId);
+    }
+
+    [Command]
+    public void CmdAncientTelescope(string nodeId)
+    {
+        GameManager.Instance.HandleAncientTelescope(this, nodeId);
+    }
+
+    [Command]
+    public void CmdPlayInstantWithTarget(int cardInstanceId, int targetInstanceId)
+    {
+        GameManager.Instance.HandlePlayInstantWithTarget(this, cardInstanceId, targetInstanceId);
+    }
+    [Command]
+    public void CmdQueueCardWithTarget(int cardInstanceId, bool upcast, int targetInstanceId)
+    {
+        GameManager.Instance.HandleQueueCardWithTarget(this, cardInstanceId, upcast, targetInstanceId);
+    }
 }
