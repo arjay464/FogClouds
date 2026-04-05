@@ -70,6 +70,13 @@ namespace FogClouds
         [NonSerialized]
         public System.Random Rng;
 
+        //CardContext — the entire gamestate exposed at resolution time
+        // Populated by GameManager immediately before each Apply() call.
+        // Available to any card effect via state.Context.
+        // Null outside of resolution (should not be read at other times).
+        [NonSerialized]
+        public CardContext Context;
+
         //Constructor
 
         public GameState() { }

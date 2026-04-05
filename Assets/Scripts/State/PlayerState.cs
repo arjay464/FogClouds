@@ -82,6 +82,10 @@ namespace FogClouds
         // Tracks daggers spent this turn for Daggers in the Dark calculation. Reset at TurnStart.
         public int DaggersSpentThisTurn;
 
+        public int SigilsSpentThisTurn;
+
+        public bool ConcealmentUsedThisTurn;
+
         // Mirror of Moonlight state. Copies instants into the queue at speed 2.
         public bool MirrorActive;
         public int MirrorTurnsRemaining;
@@ -136,6 +140,8 @@ namespace FogClouds
 
             BloodSpentThisTurn = 0;
             DaggersSpentThisTurn = 0;
+            SigilsSpentThisTurn = 0;
+            ConcealmentUsedThisTurn = false;
             MirrorActive = false;
             MirrorTurnsRemaining = 0;
             ExiledCards = new List<ExiledCard>();
@@ -162,6 +168,8 @@ namespace FogClouds
             CardsQueuedThisTurn = 0;
             BloodSpentThisTurn = 0;
             DaggersSpentThisTurn = 0;
+            SigilsSpentThisTurn = 0;
+            ConcealmentUsedThisTurn = false;
 
             // Tick mirror duration
             if (MirrorActive)

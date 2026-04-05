@@ -579,10 +579,14 @@ public class GameManager : NetworkBehaviour
                 : entry.Card.EffectId;
             var effect = CardEffectRegistry.Instance.GetEffect(resolveEffectId);
 
+            _gameState.Context = new CardContext(entry, _gameState);
+
             if (entry.TargetInstanceId != -1 && effect is ITargetedEffect targeted)
                 targeted.ApplyTargeted(entry, _gameState, entry.TargetInstanceId);
             else
                 effect?.Apply(entry, _gameState);
+
+            _gameState.Context = null;
 
             // Record for Blood Mirror
             _gameState.LastResolvedEffectId = entry.Card.EffectId;
@@ -707,7 +711,14 @@ public class GameManager : NetworkBehaviour
         player.Discard.Add(card);
 
         var effect = CardEffectRegistry.Instance.GetEffect(card.EffectId);
+
+
+        var instantEntry = new QueueEntry(playerId, card, 0);
+        _gameState.Context = new CardContext(instantEntry, _gameState);
+
         effect?.Apply(new QueueEntry(playerId, card, 0), _gameState);
+
+        _gameState.Context = null;
 
         // Mirror of Moonlight — queue a copy of this instant at speed 2
         if (player.MirrorActive)
@@ -796,10 +807,15 @@ public class GameManager : NetworkBehaviour
 
         DeductCost(player, card.Cost);
         player.Hand.Remove(card);
-        // Permanents are removed from the game entirely — not added to discard
 
         var effect = CardEffectRegistry.Instance.GetEffect(card.EffectId);
+
+        var permanentEntry = new QueueEntry(playerId, card, 0);
+        _gameState.Context = new CardContext(permanentEntry, _gameState);
+
         effect?.Apply(new QueueEntry(playerId, card, 0), _gameState);
+
+        _gameState.Context = null;
 
         AwardSilver(player, 2, "permanent played");
 
