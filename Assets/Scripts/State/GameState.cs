@@ -166,7 +166,8 @@ namespace FogClouds
                 TieBreaker = Rng.Next(),
                 BonusDamage = bonusDamage,
                 WasUpcast = wasUpcast,
-                TargetInstanceId = targetInstanceId
+                TargetInstanceId = targetInstanceId,
+                CurrentSpeed = speed
             };
 
             queue.Add(entry);

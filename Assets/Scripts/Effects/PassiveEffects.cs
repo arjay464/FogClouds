@@ -31,13 +31,24 @@ public class BlessingOfValorPassive : IPassiveEffect
 public class BlessingOfClarityPassive : IPassiveEffect
 {
     public bool IsInteractive => false;
+
     public void OnAcquire(PlayerState player, GameState state)
     {
-        player.DrawCards(3, state.Rng);
         var passive = player.Passives.Find(p => p.PassiveId == "blessing_of_clarity");
         if (passive != null) passive.StackCount = 1;
     }
-    public void OnTurnStart(PlayerState player, GameState state) { }
+
+    public void OnTurnStart(PlayerState player, GameState state)
+    {
+        var passive = player.Passives.Find(p => p.PassiveId == "blessing_of_clarity");
+        if (passive != null && passive.StackCount == 1)
+        {
+            passive.StackCount = 0;
+            player.DrawCards(3, state.Rng);
+            Debug.Log($"[BlessingOfClarity] Player {player.PlayerId} drew 3 cards.");
+        }
+    }
+
     public void OnDamageTaken(PlayerState player, int amount, GameState state) { }
     public void OnCardPlayed(PlayerState player, CardInstance card, GameState state) { }
     public void OnHPDamaged(PlayerState player, int amount, GameState state) { }

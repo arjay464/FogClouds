@@ -215,7 +215,10 @@ namespace FogClouds
             // If the effect already exists, refresh or stack it depending on design
             var existing = StatusEffects.FirstOrDefault(e => e.EffectId == effect.EffectId);
             if (existing != null)
+            {
+                existing.Value += effect.Value;
                 existing.Duration = Math.Max(existing.Duration, effect.Duration);
+            }
             else
                 StatusEffects.Add(effect);
         }

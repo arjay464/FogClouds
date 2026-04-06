@@ -339,8 +339,12 @@ public class GameHUDController : MonoBehaviour
         RefreshMergedQueue(view.MergedQueue, isMerged);
 
         // Button visibility
-        _endTurnButton.style.display =
-            view.CurrentPhase == TurnPhase.MainPhase ? DisplayStyle.Flex : DisplayStyle.None;
+        bool isMainPhase = view.CurrentPhase == TurnPhase.MainPhase;
+        _endTurnButton.style.display = isMainPhase ? DisplayStyle.Flex : DisplayStyle.None;
+        _endTurnButton.SetEnabled(!view.ReadyToEndTurn);
+        _endTurnButton.text = view.ReadyToEndTurn ? "Waiting..." : "End Turn";
+
+
 
         RefreshRoguelikePanel(view);
         RefreshShopPanel(view);
@@ -569,7 +573,11 @@ public class GameHUDController : MonoBehaviour
                     btn.AddToClassList("card-offer-btn");
                     btn.text = displayName;
 
-                    string tooltipBody = GetCardTooltipBody(cardId, CardType.Queueable, 0);
+                    var offerDef = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
+                    string tooltipBody = GetCardTooltipBody(cardId,
+                        offerDef?.Type ?? CardType.Queueable,
+                        offerDef?.BaseSpeed ?? 0);
+
                     btn.RegisterCallback<PointerEnterEvent>(evt =>
                         TooltipController.Instance?.Show(displayName, tooltipBody, evt.position));
                     btn.RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
@@ -1294,9 +1302,10 @@ public class GameHUDController : MonoBehaviour
         if (!isShop) return;
 
         var shopDoneBtn = _root.Q<Button>("shop-done-btn");
-        bool submitted = view.OwnState?.ShopDoneSubmitted ?? false;
-        shopDoneBtn.SetEnabled(!submitted);
-        _shopWaitingLabel.style.display = submitted ? DisplayStyle.Flex : DisplayStyle.None;
+        shopDoneBtn.SetEnabled(!view.ShopDoneSubmitted);
+        _shopWaitingLabel.style.display = view.ShopDoneSubmitted ? DisplayStyle.Flex : DisplayStyle.None;
+
+
 
         var offer = view.OwnShopOffer;
         var own = view.OwnState;
@@ -1992,11 +2001,13 @@ public class GameHUDController : MonoBehaviour
 
             // Tooltip
             var passiveDef = Resources.Load<PassiveDefinition>($"Passives/{passive.PassiveId}");
-            string tooltipBody = passiveDef != null ? passiveDef.Description : passive.PassiveId;
+            string tooltipBody = passiveDef != null ? passiveDef.Description : GetPassiveDescription(passive.PassiveId);
             chip.RegisterCallback<PointerEnterEvent>(evt =>
                 TooltipController.Instance?.Show(passive.DisplayName, tooltipBody, evt.position));
             chip.RegisterCallback<PointerLeaveEvent>(_ =>
                 TooltipController.Instance?.Hide());
+
+
 
             if (passive.StackCount > 0)
             {
@@ -2076,9 +2087,153 @@ public class GameHUDController : MonoBehaviour
         }
     }
 
-    private void OpenSlightOfHandMenu() { }
-    private void OpenBlessedDiaryMenu() { }
-    private void OpenAncientTelescopeMenu() { }
+    private void OpenSlightOfHandMenu()
+    {
+        var view = ClientStateManager.Instance?.CurrentState;
+        if (view == null) return;
+
+        var discard = view.OwnState?.Discard;
+
+        _pileOverlayTitle.text = "Slight of Hand — Choose a card to return to deck";
+        _pileOverlay.style.display = DisplayStyle.Flex;
+
+        _pileContent.schedule.Execute(() =>
+        {
+            _pileContent.Clear();
+
+            if (discard == null || discard.Count == 0)
+            {
+                var msg = new Label("Your discard pile is empty.");
+                msg.AddToClassList("overlay-locked-label");
+                _pileContent.Add(msg);
+                return;
+            }
+
+            foreach (var card in discard)
+            {
+                var btn = new Button();
+                btn.AddToClassList("shop-buy-btn");
+                btn.text = card.DisplayName ?? card.CardId;
+
+                string tooltipBody = GetCardTooltipBody(card.CardId, card.Type, card.ModifiedSpeed);
+                btn.RegisterCallback<PointerEnterEvent>(evt =>
+                    TooltipController.Instance?.Show(card.DisplayName ?? card.CardId, tooltipBody, evt.position));
+                btn.RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
+
+                int capturedId = card.InstanceId;
+                btn.clicked += () =>
+                {
+                    _pileOverlay.style.display = DisplayStyle.None;
+                    TooltipController.Instance?.Hide();
+                    PlayerNetworkAgent.LocalAgent?.CmdSlightOfHand(capturedId);
+                };
+                _pileContent.Add(btn);
+            }
+        });
+    }
+    private void OpenBlessedDiaryMenu()
+    {
+        var view = ClientStateManager.Instance?.CurrentState;
+        if (view == null) return;
+
+        var board = view.OwnState?.Board;
+
+        _pileOverlayTitle.text = "Blessed Diary — Choose a permanent to protect";
+        _pileOverlay.style.display = DisplayStyle.Flex;
+
+        _pileContent.schedule.Execute(() =>
+        {
+            _pileContent.Clear();
+
+            if (board == null || board.Count == 0)
+            {
+                var msg = new Label("No permanents on your board.");
+                msg.AddToClassList("overlay-locked-label");
+                _pileContent.Add(msg);
+                return;
+            }
+
+            // Show current attachment if any
+            var diary = view.OwnState?.Passives?.Find(p => p.PassiveId == "blessed_diary");
+            if (diary != null && !string.IsNullOrEmpty(diary.TargetPermanentId))
+            {
+                var currentLabel = new Label($"Currently attached to: {diary.TargetPermanentId}");
+                currentLabel.AddToClassList("overlay-locked-label");
+                _pileContent.Add(currentLabel);
+            }
+
+            foreach (var permanent in board)
+            {
+                var btn = new Button();
+                btn.AddToClassList("shop-buy-btn");
+                btn.text = permanent.DisplayName;
+
+                string tooltipBody = GetPermanentTooltip(permanent.DisplayName);
+                btn.RegisterCallback<PointerEnterEvent>(evt =>
+                    TooltipController.Instance?.Show(permanent.DisplayName, tooltipBody, evt.position));
+                btn.RegisterCallback<PointerLeaveEvent>(_ => TooltipController.Instance?.Hide());
+
+                string capturedId = permanent.PermanentId;
+                btn.clicked += () =>
+                {
+                    _pileOverlay.style.display = DisplayStyle.None;
+                    TooltipController.Instance?.Hide();
+                    PlayerNetworkAgent.LocalAgent?.CmdBlessedDiaryTarget(capturedId);
+                };
+                _pileContent.Add(btn);
+            }
+        });
+    }
+    private void OpenAncientTelescopeMenu()
+    {
+        var view = ClientStateManager.Instance?.CurrentState;
+        var def = GetInsightTreeDef();
+        if (view == null || def == null) return;
+
+        var own = view.OwnState;
+        var insightTree = own?.InsightTree;
+
+        _pileOverlayTitle.text = "Ancient Telescope";
+        _pileOverlay.style.display = DisplayStyle.Flex;
+
+        _pileContent.schedule.Execute(() =>
+        {
+            _pileContent.Clear();
+
+            bool anyAvailable = false;
+            foreach (var node in def.AllNodes)
+            {
+                bool unlocked = insightTree?.IsUnlocked(node.NodeId) ?? false;
+                if (unlocked) continue;
+
+                bool prereqsMet = true;
+                if (node.Prerequisites != null)
+                    foreach (var prereq in node.Prerequisites)
+                        if (!(insightTree?.IsUnlocked(prereq.NodeId) ?? false))
+                        { prereqsMet = false; break; }
+
+                if (!prereqsMet) continue;
+
+                anyAvailable = true;
+                var btn = new Button();
+                btn.AddToClassList("shop-buy-btn");
+                btn.text = node.DisplayName;
+                btn.clicked += () =>
+                {
+                    _pileOverlay.style.display = DisplayStyle.None;
+                    PlayerNetworkAgent.LocalAgent?.CmdAncientTelescope(node.NodeId);
+                };
+                _pileContent.Add(btn);
+            }
+
+            if (!anyAvailable)
+            {
+                var msg = new Label("No nodes available to reveal.");
+                msg.AddToClassList("overlay-locked-label");
+                _pileContent.Add(msg);
+            }
+        });
+    }
 
     public void BeginTargeting(
         List<BoardPermanent> targets,  // valid targets to highlight
@@ -2147,10 +2302,40 @@ public class GameHUDController : MonoBehaviour
 
     private string GetCardTooltipBody(string cardId, CardType type, int speed)
     {
-        var def = Resources.Load<CardDefinition>($"Cards/{cardId}");
+        var def = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
         string body = def?.FlavourText ?? "";
-        if (type == CardType.Queueable)
+        if (type == CardType.Queueable && speed > 0)
             body += body.Length > 0 ? $"\n\nSPD {speed}" : $"SPD {speed}";
         return body;
     }
+
+    private string CardIdToAssetName(string cardId)
+    {
+        var parts = cardId.Split('_');
+        return string.Concat(System.Array.ConvertAll(parts,
+            p => char.ToUpper(p[0]) + p.Substring(1)));
+    }
+
+    private string GetPassiveDescription(string passiveId) => passiveId switch
+    {
+        "cursed_dagger" => "Your daggers are cursed. You may upcast attacks with a dagger to give them lifesteal.",
+        "pact_of_the_devil" => "At the start of each turn, gain 1 shield and draw 1 card. Your attacks do +1 damage.",
+        "blessing_of_valor" => "Your queued cards deal 1 extra damage.",
+        "blessing_of_clarity" => "On acquire: draw 3 cards at the start of your next turn.",
+        "blessing_of_grace" => "Your queued cards gain +2 speed.",
+        "blessing_of_fortitude" => "At the start of each turn, gain 3 shield.",
+        "season_of_harvest" => "Permanently gain +1 per-turn resource.",
+        "accelerator" => "Each card you queue this turn gives +10 speed to subsequent cards.",
+        "slight_of_hand" => "Once per turn during Main Phase: choose a card from your discard and shuffle it into your deck.",
+        "clutterstorm" => "The first time you take HP damage each turn, add a Clutterstorm card to the queue.",
+        "unbroken_chain" => "All your attacks gain +1 damage for each consecutive turn you've owned the first resolving card in the merged queue.",
+        "natures_eye" => "Reveals one random opponent fog flag each turn.",
+        "market_crash" => "Once: queue a Market Crash card at speed 10.",
+        "blessed_diary" => "Attach to a permanent. When that permanent is destroyed by the opponent, draw 3 cards.",
+        "ancient_telescope" => "Once per turn: temporarily reveal an insight node you have the prerequisites for.",
+        "ceremonial_dagger" => "Whenever you apply a status effect to your opponent, also apply 1 Bleed.",
+        "cha_cha_lifelong_companion" => "Cha Cha stays on your board permanently instead of expiring.",
+        _ => passiveId
+    };
+
 }

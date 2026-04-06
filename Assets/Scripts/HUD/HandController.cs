@@ -133,12 +133,12 @@ public class HandController : MonoBehaviour
 
     private void RegisterDragCallbacks(CardView card)
     {
-        // CardView.RegisterCallbacks — replace the right-click block:
         card.RegisterCallback<PointerDownEvent>(evt =>
         {
             if (evt.button != 0) return;
             if (_draggedCard != null) return;
             if (IsTargeting) return;
+            if (ClientStateManager.Instance?.CurrentState?.OwnState?.ReadyToEndTurn == true) return;
 
             _draggedCard = card;
             _dragOffset = evt.localPosition;
@@ -401,5 +401,6 @@ public class HandController : MonoBehaviour
         }
         _pendingHandTargetCard = null;
         _root.UnregisterCallback<ClickEvent>(OnHandTargetCancelled);
+        TooltipController.Instance?.Hide();
     }
 }

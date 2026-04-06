@@ -461,6 +461,8 @@ namespace FogClouds
         public void ApplyTargeted(QueueEntry source, GameState state, int targetInstanceId)
         {
             var player = state.GetPlayer(source.OwnerId);
+            var opponent = state.GetOpponent(source.OwnerId);
+            Debug.Log($"[Ferricidium] Looking for target {targetInstanceId}. Board IDs: {string.Join(", ", opponent.Board.Select(p => p.InstanceId))}");
             var target = player.Board.Find(p => p.InstanceId == targetInstanceId);
             if (target == null)
             {
@@ -850,6 +852,7 @@ namespace FogClouds
         {
             var player = state.GetPlayer(source.OwnerId);
             var totem = new TotemOfWarding(source.OwnerId) { SourceCard = source.Card };
+            state.AssignPermanentInstanceId(totem);
             player.Board.Add(totem);
             Debug.Log($"[TotemOfWardingEffect] Player {source.OwnerId} spawned Totem of Warding.");
         }

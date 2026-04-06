@@ -61,6 +61,8 @@ namespace FogClouds
         public string EventOutcome;
         public bool OwnChoiceSubmitted;    // has this player submitted their event choice
         public bool EventChoiceRequired;   // does this event require player input
+        public bool ReadyToEndTurn;
+        public bool ShopDoneSubmitted;
         public List<CardInstanceView> EventRevealedCards;
 
     }
@@ -131,6 +133,7 @@ namespace FogClouds
         public bool StrategyCategoryCommitted;
         public bool InsightCategoryCommitted;
         public bool ShopDoneSubmitted;
+        public bool ReadyToEndTurn;
     }
 
     // A queue entry as seen by a client.
@@ -187,6 +190,10 @@ namespace FogClouds
                 CurrentEventDescription = BuildEventDescription(state),
                 OwnChoiceSubmitted = state.CurrentPhase == TurnPhase.EventPhase
                     && state.PlayerEventChoices[viewerPlayerId] != null,
+                ReadyToEndTurn = state.CurrentPhase == TurnPhase.MainPhase
+                    && viewer.ReadyToEndTurn,
+                ShopDoneSubmitted = state.CurrentPhase == TurnPhase.ShopPhase
+                    && viewer.ShopDoneSubmitted,
                 EventChoiceRequired = BuildEventChoiceRequired(state),
                 EventRevealedCards = BuildEventRevealedCards(state, viewerPlayerId),
                 EventOutcome = state.CurrentPhase == TurnPhase.EventPhase ? state.EventOutcome : null
@@ -220,7 +227,8 @@ namespace FogClouds
                 InsightCategoryCommitted = viewer.InsightCategoryCommitted,
                 StrategyCategoryCommitted = viewer.StrategyCategoryCommitted,
                 ShopDoneSubmitted = viewer.ShopDoneSubmitted,
-                StatusEffects = viewer.StatusEffects
+                StatusEffects = viewer.StatusEffects,
+                ReadyToEndTurn = viewer.ReadyToEndTurn
             };
         }
 

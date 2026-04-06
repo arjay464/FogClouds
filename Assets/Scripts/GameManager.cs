@@ -4,7 +4,6 @@ using Mirror;
 using UnityEngine;
 using FogClouds;
 using System.Linq;
-using UnityEditor.VersionControl;
 
 public class GameManager : NetworkBehaviour
 {
@@ -372,6 +371,7 @@ public class GameManager : NetworkBehaviour
         player.ReadyToEndTurn = true;
         _endTurnVotes++;
         Debug.Log($"[GameManager] Player {playerId} submitted EndTurn. Votes: {_endTurnVotes}/2");
+        StateRelay.Instance.BroadcastToAll();
 
         if (_endTurnVotes >= 2)
         {
@@ -446,7 +446,7 @@ public class GameManager : NetworkBehaviour
         }
 
         // Shadowstep — set speed to fastest card in own queue + 2 at queue time
-        if (card.EffectId == "shadowstep")
+        if (card.EffectId.Contains("shadowstep"))
         {
             var ownQueue = _gameState.GetQueue(playerId);
             int maxSpeed = ownQueue.Count > 0 ? ownQueue.Max(e => e.CurrentSpeed) : 0;
@@ -1506,6 +1506,7 @@ public class GameManager : NetworkBehaviour
         player.ShopDoneSubmitted = true;
         _shopVotes++;
         Debug.Log($"[GameManager] Player {playerId} done shopping. Votes: {_shopVotes}/2");
+        StateRelay.Instance.BroadcastToAll();
 
         if (_shopVotes >= 2)
         {

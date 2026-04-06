@@ -150,10 +150,11 @@ namespace FogClouds
             OpponentCharacterId = Opponent.Character.CharacterId;
 
             // Queue
-            CardsRemainingInQueue = state.MergedQueue.Count;
-            OpponentCardsRemaining = state.MergedQueue.Count(e => e.OwnerId != entry.OwnerId);
-            OwnCardsRemaining = state.MergedQueue.Count(e => e.OwnerId == entry.OwnerId);
-            IsFirstToResolve = state.MergedQueue.All(e => e.OwnerId == entry.OwnerId);
+            var queue = state.MergedQueue ?? new List<QueueEntry>();
+            CardsRemainingInQueue = queue.Count;
+            OpponentCardsRemaining = queue.Count(e => e.OwnerId != entry.OwnerId);
+            OwnCardsRemaining = queue.Count(e => e.OwnerId == entry.OwnerId);
+            IsFirstToResolve = queue.All(e => e.OwnerId == entry.OwnerId);
 
             // Turn
             TurnNumber = state.TurnNumber;
