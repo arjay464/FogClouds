@@ -284,6 +284,7 @@
     border-color: rgba(80, 80, 100, 0.5);
     padding: 6px 8px;
 }
+
 /* ── Draw / Discard Piles ────────────────────────────────────── */
 .pile {
     width: 44px;
@@ -516,7 +517,7 @@
     height: 100%;
     background-color: rgba(0, 0, 0, 0.75);
     align-items: center;
-    justify-content: center; /* centers vertically */
+    justify-content: center; 
 }
 
 .roguelike-panel-inner {
@@ -526,9 +527,8 @@
     border-radius: 6px;
     padding: 24px;
     min-width: 500px;
-    max-height: 90%; /* prevent overflow */
+    max-height: 90%; 
     align-items: center;
-    /* remove any fixed height if you set one */
 }
 
 .roguelike-title {
@@ -620,6 +620,7 @@
     align-items: flex-start;
     padding: 6px 8px;
 }
+
 /* ── Overlays shared base ────────────────────────────────────── */
 .insight-overlay,
 .pile-overlay {
@@ -1059,6 +1060,7 @@
     flex-direction: row;
     justify-content: flex-end;
 }
+
 /* ── Passive Chips ───────────────────────────────────────────── */
 .passive-chip {
     flex-direction: row;

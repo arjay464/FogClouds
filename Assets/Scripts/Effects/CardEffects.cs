@@ -7,15 +7,15 @@ using System.Collections.Generic;
 namespace FogClouds
 {
 
-    //Targeting effects must implement ApplyTargeted
+    // ——— INTERFACES ———————————————————————————
     public interface ITargetedEffect
     {
         void ApplyTargeted(QueueEntry source, GameState state, int targetInstanceId);
     }
 
+    // ——— CARD EFFECTS ——————————————————————————
 
-    // DealDamage — applies damage through the full pipeline:
-    // attacker board buffs → defender board reductions → shield → HP → lifesteal
+    // DealDamage, applies damage through the full pipeline:
     public class DealDamageEffect : ICardEffect
     {
         public int Amount;
@@ -56,10 +56,10 @@ namespace FogClouds
                 state.NextDamageReduction = 0;
             }
 
-            // Counterstrike — convert attack damage to shield for defender instead
+            // Parry — convert attack damage to shield for defender instead
             if (defender.ParryActive && source.Card.IsAttack)
             {
-                defender.GainShield(Amount); // base amount only, no buffs
+                defender.GainShield(Amount);
                 defender.ParryActive = false;
                 Debug.Log($"[DealDamageEffect] Counterstrike absorbed {Amount} damage as shield.");
                 return;
@@ -74,7 +74,6 @@ namespace FogClouds
             {
                 attacker.Silver += actualDamage;
 
-                // OnHPDamaged passive hook
                 foreach (var passive in defender.Passives)
                 {
                     var effect = PassiveRegistry.Instance.GetEffect(passive.PassiveId);
@@ -117,7 +116,7 @@ namespace FogClouds
         }
     }
 
-    // HealEffect — restores HP up to the character's base HP cap. No overheal.
+    // HealEffect — restores HP up to the character's base HP cap
     public class HealEffect : ICardEffect
     {
         public int Amount;
@@ -194,7 +193,7 @@ namespace FogClouds
         }
     }
 
-    // MultiHitEffect — applies DealDamage multiple times sequentially (e.g. Twin Slash)
+    // MultiHitEffect — applies DealDamage multiple times sequentially
     public class MultiHitEffect : ICardEffect
     {
         public int HitCount;
@@ -218,6 +217,7 @@ namespace FogClouds
             }
         }
     }
+
     // BloodHexEffect — adds 2 useless Blood Hex cards to opponent's draw pile
     public class BloodHexEffect : ICardEffect
     {
@@ -233,7 +233,6 @@ namespace FogClouds
             for (int i = 0; i < 2; i++)
             {
                 var card = new CardInstance(def, state.GenerateInstanceId());
-                // Insert at a random position in the draw pile
                 int insertAt = state.Rng.Next(opponent.Deck.Count + 1);
                 opponent.Deck.Insert(insertAt, card);
             }
@@ -294,7 +293,6 @@ namespace FogClouds
         public void Apply(QueueEntry source, GameState state)
         {
             var opponent = state.GetOpponent(source.OwnerId);
-            // Bleed stacks — add a new status effect each application
             opponent.ApplyStatusEffect(new StatusEffect("bleed", value: 1, duration: -1));
             Debug.Log($"[ArterialCutEffect] Applied Bleed to opponent.");
         }
@@ -322,7 +320,6 @@ namespace FogClouds
     }
 
     // TotemOfSharpnessEffect — spawns TotemOfSharpness permanent (2 turns)
-    // The permanent itself is defined in PermanentDefinitions.cs
     public class TotemOfSharpnessEffect : ICardEffect
     {
         public void Apply(QueueEntry source, GameState state)
@@ -359,7 +356,6 @@ namespace FogClouds
     }
 
     // MulticultaEffect — grants 2 extra daggers at the start of next turn
-    // Uses a status effect with a 1-turn duration; OnTurnStart checks for it
     public class MulticultaEffect : ICardEffect
     {
         public void Apply(QueueEntry source, GameState state)
@@ -422,12 +418,10 @@ namespace FogClouds
     }
 
     // FerricidiumEffect — instant: destroys target permanent on opponent's board
-    // For alpha, destroys the first permanent found. Targeting UI comes later.
     public class FerricidiumEffect : ICardEffect, ITargetedEffect
     {
         public void Apply(QueueEntry source, GameState state)
         {
-            // No target — still valid, do nothing
             Debug.Log("[FerricidiumEffect] No target provided — no effect.");
         }
 
@@ -450,7 +444,6 @@ namespace FogClouds
     }
 
     // LexNoctisEffect — instant: protects target permanent this turn
-    // Sets LexNoctisProtected flag on the first permanent found. Targeting UI comes later.
     public class LexNoctisEffect : ICardEffect, ITargetedEffect
     {
         public void Apply(QueueEntry source, GameState state)
@@ -482,7 +475,6 @@ namespace FogClouds
             int count = Mathf.Min(3, player.Deck.Count);
             for (int i = 0; i < count; i++)
             {
-                // Always exile from top of deck
                 var card = player.Deck[0];
                 player.Deck.RemoveAt(0);
                 player.ExiledCards.Add(new ExiledCard(card, turnsRemaining: 2));
@@ -553,7 +545,6 @@ namespace FogClouds
 
         public void Apply(QueueEntry source, GameState state)
         {
-            // MergedQueue still contains this entry's siblings; +1 for self
             int cardCount = state.MergedQueue.Count + 1;
             int damage = cardCount;
             new DealDamageEffect(damage, Lifesteal).Apply(source, state);
@@ -814,7 +805,6 @@ namespace FogClouds
         public void ApplyTargeted(QueueEntry source, GameState state, int targetInstanceId)
         {
             var player = state.GetPlayer(source.OwnerId);
-            // targetInstanceId is a card InstanceId here, not a permanent
             var card = player.Hand.Find(c => c.InstanceId == targetInstanceId);
             if (card == null)
             {
@@ -824,7 +814,6 @@ namespace FogClouds
             int heal = Mathf.Min(card.Cost.Blood, player.Character.BaseHP - player.HP);
             player.HP += heal;
             player.Hand.Remove(card);
-            // Card destroyed — not added to discard
         }
     }
 
