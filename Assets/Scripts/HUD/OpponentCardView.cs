@@ -6,10 +6,13 @@ public class OpponentCardView : VisualElement
 {
     private VisualElement _cardRoot;
 
+    private static VisualTreeAsset _cardViewTemplate;
+
+    public static void SetTemplate(VisualTreeAsset template) => _cardViewTemplate = template;
+
     public OpponentCardView(CardInstanceView data)
     {
-        var template = Resources.Load<VisualTreeAsset>("UI/CardView");
-        template.CloneTree(this);
+        _cardViewTemplate.CloneTree(this);
         _cardRoot = this.Q<VisualElement>("card-root");
         _cardRoot.AddToClassList("opponent-card");
         this.pickingMode = PickingMode.Ignore;
@@ -19,8 +22,7 @@ public class OpponentCardView : VisualElement
     // Face-down constructor — no data needed
     public OpponentCardView()
     {
-        var template = Resources.Load<VisualTreeAsset>("UI/CardView");
-        template.CloneTree(this);
+        _cardViewTemplate.CloneTree(this);
         _cardRoot = this.Q<VisualElement>("card-root");
         _cardRoot.AddToClassList("opponent-card");
         _cardRoot.AddToClassList("card-facedown");
@@ -70,7 +72,7 @@ public class OpponentCardView : VisualElement
                 break;
         }
 
-        var def = Resources.Load<CardDefinition>($"Cards/{data.CardId}");
+        var def = CardLibrary.Instance.Get(data.CardId);
         this.Q<Label>("flavour-text").text = def != null ? def.FlavourText : "";
     }
 }

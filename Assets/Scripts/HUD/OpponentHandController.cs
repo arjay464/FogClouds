@@ -16,12 +16,16 @@ public class OpponentHandController : MonoBehaviour
     private const float FanSpread = 4f;
     private const float FanRaise = 8f;
 
+    [SerializeField] private VisualTreeAsset _cardViewTemplate;
+
     public void Initialize(VisualElement root)
     {
         _opponentBoard = root.Q<VisualElement>("opponent-board");
 
         if (ClientStateManager.Instance != null)
             ClientStateManager.Instance.OnStateUpdated += Refresh;
+
+        OpponentCardView.SetTemplate(_cardViewTemplate);
     }
 
     void OnDisable()

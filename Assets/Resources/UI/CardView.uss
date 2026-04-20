@@ -12,7 +12,6 @@
     transition-duration: 0.15s;
 }
 
-/* Type variants — applied by CardView.cs at runtime */
 .card-queueable {
     border-radius: 4px;
     border-color: rgba(180, 140, 60, 0.6);
@@ -113,7 +112,6 @@
     white-space: normal;
 }
 
-/* Type shape variants */
 .shape-queueable {
     border-radius: 2px;
     background-color: rgba(180, 140, 60, 0.3);

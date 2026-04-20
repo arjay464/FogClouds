@@ -244,7 +244,8 @@ namespace FogClouds
             var owner = GetPlayer(target.OwnerId);
             var destroyer = GetPlayer(destroyerPlayerId);
 
-            if (!owner.Board.Remove(target)) return;
+            if (!owner.Board.Contains(target)) return;
+            owner.RemovePermanent(target);
 
             if (target.SourceCard != null) { owner.Discard.Add(target.SourceCard); }
 
@@ -254,7 +255,7 @@ namespace FogClouds
             {
                 foreach (var passive in owner.Passives)
                 {
-                    var effect = PassiveRegistry.Instance.GetEffect(passive.PassiveId);
+                    var effect = PassiveEffectRegistry.Instance.GetEffect(passive.PassiveId);
                     effect?.OnPermanentDestroyed(owner, target, destroyerPlayerId, this);
                 }
             }

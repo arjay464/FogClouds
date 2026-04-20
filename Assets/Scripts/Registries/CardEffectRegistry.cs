@@ -28,13 +28,13 @@ public class CardEffectRegistry : MonoBehaviour
         _effects["knife_strike_upcast"] = new DealDamageEffect(3, lifesteal: true);
         _effects["cultellara"] = new AddDaggerEffect();
         _effects["brace"] = new GainShieldEffect(2);
-        _effects["cha_cha_card"] = new SpawnPermanentEffect("cha_cha", "Cha Cha - Loyal Chupacabra", turnsRemaining: 2);
+        _effects["cha_cha_card"] = new ChaChaCardEffect();
         _effects["cultivita"] = new HealEffect(3);
 
         // ── Power pool ─────────────────────────────────────────────
         _effects["blood_hex"] = new BloodHexEffect();
         _effects["ferravallum"] = new GainShieldEffect(5);
-        _effects["cursed_goblet_card"] = new SpawnPermanentEffect("cursed_goblet", "Cursed Goblet", turnsRemaining: -1);
+        _effects["cursed_goblet_card"] = new CursedGobletEffect();
         _effects["hemorrhage_base"] = new HemorrhageEffect();
         _effects["hemorrhage_upcast"] = new HemorrhageEffect();
         _effects["bloodrush_base"] = new BloodrushEffect();

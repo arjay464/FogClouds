@@ -29,8 +29,6 @@ public class GameEventRegistry : MonoBehaviour
         _effects["writing_on_the_wall"] = new WritingOnTheWallEffect();
         _effects["fortune_favors_the_bold"] = new FortuneFavorsTheBoldEffect();
         Debug.Log($"[GameEventRegistry] Registered {_effects.Count} events.");
-
-        Debug.Log($"[GameEventRegistry] Registered {_effects.Count} events.");
     }
 
     public IGameEventEffect GetEffect(string eventId)

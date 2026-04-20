@@ -76,8 +76,9 @@ public class GameHUDController : MonoBehaviour
     private Button _insightButton;
     private Button _passiveButton;
 
-    //Insight Tree
+    //Scriptable Objects 
     [SerializeField] private InsightTreeDefinition _insightTreeDefinition;
+    [SerializeField] private VisualTreeAsset _cardViewTemplate;
 
     // INSIGHT tree overlay
     private VisualElement _treeOverlay;
@@ -113,10 +114,6 @@ public class GameHUDController : MonoBehaviour
     private string _fortuneOwnChoice;
 
 
-    private Dictionary<string, CharacterData> _characterCache = new();
-    private Dictionary<string, CardDefinition> _cardDefCache = new();
-    private InsightTreeDefinition _cachedInsightTree;
-
     //passives
     private VisualElement _passivesShelf;
 
@@ -125,6 +122,9 @@ public class GameHUDController : MonoBehaviour
     private System.Action<int> _onTargetSelected;
     private System.Action _onTargetCancelled;
     private List<VisualElement> _highlightedChips = new();
+
+    //constants
+    int DEFAULT_HP = 40;
 
     void Start()
     {
@@ -395,35 +395,20 @@ public class GameHUDController : MonoBehaviour
     private CharacterData GetCharacterData(string characterId)
     {
         if (string.IsNullOrEmpty(characterId)) return null;
-        if (!_characterCache.TryGetValue(characterId, out var data))
-        {
-            data = Resources.Load<CharacterData>($"Characters/{characterId}");
-            if (data != null) _characterCache[characterId] = data;
-        }
+        var data = CharacterLibrary.Instance.Get(characterId);
         return data;
     }
 
     private CardDefinition GetCardDef(string cardId)
     {
         if (string.IsNullOrEmpty(cardId)) return null;
-        if (!_cardDefCache.TryGetValue(cardId, out var def))
-        {
-            def = Resources.Load<CardDefinition>($"Cards/{cardId}");
-            if (def != null) _cardDefCache[cardId] = def;
-        }
+        var def = CardLibrary.Instance.Get(cardId);
         return def;
-    }
-
-    private InsightTreeDefinition GetInsightTreeDef()
-    {
-        if (_cachedInsightTree == null)
-            _cachedInsightTree = Resources.Load<InsightTreeDefinition>("TreeNodes/InsightTree");
-        return _cachedInsightTree;
     }
 
     private int LoadBaseHP(string characterId)
     {
-        return GetCharacterData(characterId)?.BaseHP ?? 40;
+        return GetCharacterData(characterId)?.BaseHP ?? DEFAULT_HP;
     }
 
     // Button handlers — route to PlayerNetworkAgent
@@ -573,7 +558,7 @@ public class GameHUDController : MonoBehaviour
                     btn.AddToClassList("card-offer-btn");
                     btn.text = displayName;
 
-                    var offerDef = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
+                    var offerDef = CardLibrary.Instance.Get(cardId);
                     string tooltipBody = GetCardTooltipBody(cardId,
                         offerDef?.Type ?? CardType.Queueable,
                         offerDef?.BaseSpeed ?? 0);
@@ -725,7 +710,7 @@ public class GameHUDController : MonoBehaviour
     private void PopulateOpponentTree(ClientGameStateView view)
     {
         var tree = view.OpponentState?.InsightTree;
-        var insightDef = GetInsightTreeDef();
+        var insightDef = _insightTreeDefinition;
 
         if (tree == null)
         {
@@ -804,7 +789,7 @@ public class GameHUDController : MonoBehaviour
         var wrap = new VisualElement();
         wrap.AddToClassList("mini-card-wrap");
 
-        var template = Resources.Load<VisualTreeAsset>("UI/CardView");
+        var template = _cardViewTemplate;
         template.CloneTree(wrap);
 
         var cardRoot = wrap.Q<VisualElement>("card-root");
@@ -2000,7 +1985,7 @@ public class GameHUDController : MonoBehaviour
             chip.Add(label);
 
             // Tooltip
-            var passiveDef = Resources.Load<PassiveDefinition>($"Passives/{passive.PassiveId}");
+            var passiveDef = PassiveLibrary.Instance.Get(passive.PassiveId);
             string tooltipBody = passiveDef != null ? passiveDef.Description : GetPassiveDescription(passive.PassiveId);
             chip.RegisterCallback<PointerEnterEvent>(evt =>
                 TooltipController.Instance?.Show(passive.DisplayName, tooltipBody, evt.position));
@@ -2187,7 +2172,7 @@ public class GameHUDController : MonoBehaviour
     private void OpenAncientTelescopeMenu()
     {
         var view = ClientStateManager.Instance?.CurrentState;
-        var def = GetInsightTreeDef();
+        var def = _insightTreeDefinition;
         if (view == null || def == null) return;
 
         var own = view.OwnState;
@@ -2302,18 +2287,11 @@ public class GameHUDController : MonoBehaviour
 
     private string GetCardTooltipBody(string cardId, CardType type, int speed)
     {
-        var def = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
+        var def = CardLibrary.Instance.Get(cardId);
         string body = def?.FlavourText ?? "";
         if (type == CardType.Queueable && speed > 0)
             body += body.Length > 0 ? $"\n\nSPD {speed}" : $"SPD {speed}";
         return body;
-    }
-
-    private string CardIdToAssetName(string cardId)
-    {
-        var parts = cardId.Split('_');
-        return string.Concat(System.Array.ConvertAll(parts,
-            p => char.ToUpper(p[0]) + p.Substring(1)));
     }
 
     private string GetPassiveDescription(string passiveId) => passiveId switch

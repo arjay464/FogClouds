@@ -34,8 +34,15 @@ namespace FogClouds
         public List<CardInstance> Discard;
 
         //Board
-        //Active permanents and creatures on this player's board.
+        // Active permanents on this player's board. Source of truth for serialization and snapshots.
         public List<BoardPermanent> Board;
+
+        // Indexed collections for O(1) permanent behavior lookup.
+        // Derived from Board — populated via AddPermanent/RemovePermanent, never serialized.
+        [NonSerialized] public List<IDamageModifier> DamageModifiers = new();
+        [NonSerialized] public List<IBloodCostModifier> BloodCostModifiers = new();
+        [NonSerialized] public List<IOnCardResolved> OnCardResolvedListeners = new();
+        [NonSerialized] public List<IDamageTakenReactor> DamageTakenReactors = new();
 
         //Active passive abilities (from Permanent-type cards or upgrades).
         public List<Passive> Passives;
@@ -122,6 +129,10 @@ namespace FogClouds
             Deck = new List<CardInstance>();
             Discard = new List<CardInstance>();
             Board = new List<BoardPermanent>();
+            DamageModifiers = new List<IDamageModifier>();
+            BloodCostModifiers = new List<IBloodCostModifier>();
+            OnCardResolvedListeners = new List<IOnCardResolved>();
+            DamageTakenReactors = new List<IDamageTakenReactor>();
             Passives = new List<Passive>();
             StatusEffects = new List<StatusEffect>();
 
@@ -273,6 +284,20 @@ namespace FogClouds
         {
             Hand.Remove(card);
             Discard.Add(card);
+        }
+
+        // Adds a permanent to the board and notifies it so it can register into indexed collections.
+        public void AddPermanent(BoardPermanent permanent)
+        {
+            Board.Add(permanent);
+            permanent.OnAdded(this);
+        }
+
+        // Removes a permanent from the board and notifies it so it can deregister from indexed collections.
+        public void RemovePermanent(BoardPermanent permanent)
+        {
+            Board.Remove(permanent);
+            permanent.OnRemoved(this);
         }
     }
 

@@ -90,7 +90,7 @@ public class BlessingInDisguiseEffect : IGameEventEffect
                 StackCount = 1
             });
 
-        var effect = PassiveRegistry.Instance.GetEffect(choice);
+        var effect = PassiveEffectRegistry.Instance.GetEffect(choice);
         effect?.OnAcquire(opponent, state);
         Debug.Log($"[BlessingInDisguise] Player {playerId} gave {choice} to Player {opponentId}.");
     }
@@ -195,7 +195,7 @@ public class DealWithTheDevilEffect : IGameEventEffect
                 StackCount = 1
             });
 
-        var effect = PassiveRegistry.Instance.GetEffect("pact_of_the_devil");
+        var effect = PassiveEffectRegistry.Instance.GetEffect("pact_of_the_devil");
         effect?.OnAcquire(player, state);
         Debug.Log($"[DealWithTheDevil] Player {playerId} took the deal. Lost {loss} HP, gained Pact of the Devil.");
     }

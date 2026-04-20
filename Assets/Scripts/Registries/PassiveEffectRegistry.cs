@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using FogClouds;
 
-public class PassiveRegistry : MonoBehaviour
+public class PassiveEffectRegistry : MonoBehaviour
 {
-    public static PassiveRegistry Instance { get; private set; }
+    public static PassiveEffectRegistry Instance { get; private set; }
 
     private Dictionary<string, IPassiveEffect> _passives = new();
 
@@ -37,7 +37,7 @@ public class PassiveRegistry : MonoBehaviour
         _passives["ancient_telescope"] = new AncientTelescopePassive();
         _passives["ceremonial_dagger"] = new CeremonialDaggerPassive();
         _passives["cha_cha_lifelong_companion"] = new ChaChaLifelongCompanionPassive();
-        Debug.Log($"[PassiveRegistry] Registered {_passives.Count} passives.");
+        Debug.Log($"[PassiveEffectRegistry] Registered {_passives.Count} passives.");
     }
 
     public IPassiveEffect GetEffect(string passiveId)
@@ -45,7 +45,7 @@ public class PassiveRegistry : MonoBehaviour
         if (_passives.TryGetValue(passiveId, out var effect))
             return effect;
 
-        Debug.LogWarning($"[PassiveRegistry] No effect found for id: {passiveId}");
+        Debug.LogWarning($"[PassiveEffectRegistry] No effect found for id: {passiveId}");
         return null;
     }
 }

@@ -40,14 +40,12 @@ namespace FogClouds
                 damage += stormBuff.Value;
 
             // Attacker board buffs
-            foreach (var permanent in attacker.Board)
-                if (permanent is IDamageModifier mod)
-                    damage = mod.ModifyDamage(damage, isAttacker: true);
+            foreach (var mod in attacker.DamageModifiers)
+                damage = mod.ModifyDamage(damage, isAttacker: true);
 
             // Defender board reductions
-            foreach (var permanent in defender.Board)
-                if (permanent is IDamageModifier mod)
-                    damage = mod.ModifyDamage(damage, isAttacker: false);
+            foreach (var mod in defender.DamageModifiers)
+                damage = mod.ModifyDamage(damage, isAttacker: false);
 
             // Brand of Fragility — reduce damage of next damage card
             if (state.NextDamageReduction > 0)
@@ -76,14 +74,12 @@ namespace FogClouds
 
                 foreach (var passive in defender.Passives)
                 {
-                    var effect = PassiveRegistry.Instance.GetEffect(passive.PassiveId);
+                    var effect = PassiveEffectRegistry.Instance.GetEffect(passive.PassiveId);
                     effect?.OnHPDamaged(defender, actualDamage, state);
                 }
 
-                // Totem of Warding — apply bleed to attacker
-                foreach (var permanent in defender.Board)
-                    if (permanent is IDamageTakenReactor reactor)
-                        reactor.OnDamageTakenFromOpponent(defender, attacker, actualDamage, state);
+                foreach (var reactor in defender.DamageTakenReactors)
+                    reactor.OnDamageTakenFromOpponent(defender, attacker, actualDamage, state);
             }
 
             if (Lifesteal)
@@ -146,54 +142,31 @@ namespace FogClouds
         }
     }
 
-    // SpawnPermanentEffect — places a BoardPermanent on the casting player's board
-    public class SpawnPermanentEffect : ICardEffect
+    // ChaChaCardEffect — spawns Cha Cha - Loyal Chupacabra (2 turns, +1 attack damage)
+    public class ChaChaCardEffect : ICardEffect
     {
-        public string PermanentId;
-        public string DisplayName;
-        public int TurnsRemaining;
-
-        public SpawnPermanentEffect(string permanentId, string displayName, int turnsRemaining)
-        {
-            PermanentId = permanentId;
-            DisplayName = displayName;
-            TurnsRemaining = turnsRemaining;
-        }
-
         public void Apply(QueueEntry source, GameState state)
         {
-            PlayerState player = state.GetPlayer(source.OwnerId);
-            BoardPermanent permanent = CreatePermanent(source.OwnerId);
-            permanent.SourceCard = source.Card;
+            var player = state.GetPlayer(source.OwnerId);
+            var permanent = new ChaCha(source.OwnerId, bonusDamage: 1) { SourceCard = source.Card };
             state.AssignPermanentInstanceId(permanent);
-            player.Board.Add(permanent);
-            Debug.Log($"[SpawnPermanentEffect] Player {source.OwnerId} spawned {DisplayName}.");
-        }
-
-        private BoardPermanent CreatePermanent(int ownerId)
-        {
-            switch (PermanentId)
-            {
-                case "cha_cha":
-                    return new ChaCha(ownerId, bonusDamage: 1);
-                case "cursed_goblet":
-                    return new CursedGoblet(ownerId, reductionPercent: 0.2f);
-                case "totem_of_warding":
-                    return new TotemOfWarding(ownerId);
-                default:
-                    Debug.LogWarning($"[SpawnPermanentEffect] No subclass found for {PermanentId}, spawning base BoardPermanent.");
-                    return new BoardPermanent
-                    {
-                        PermanentId = PermanentId,
-                        DisplayName = DisplayName,
-                        OwnerId = ownerId,
-                        TurnsRemaining = TurnsRemaining
-                    };
-            }
+            player.AddPermanent(permanent);
+            Debug.Log($"[ChaChaCardEffect] Player {source.OwnerId} spawned Cha Cha.");
         }
     }
 
-    // MultiHitEffect — applies DealDamage multiple times sequentially
+    // CursedGobletEffect — spawns Cursed Goblet (infinite, reduces incoming damage by 20%)
+    public class CursedGobletEffect : ICardEffect
+    {
+        public void Apply(QueueEntry source, GameState state)
+        {
+            var player = state.GetPlayer(source.OwnerId);
+            var permanent = new CursedGoblet(source.OwnerId, reductionPercent: 0.2f) { SourceCard = source.Card };
+            state.AssignPermanentInstanceId(permanent);
+            player.AddPermanent(permanent);
+            Debug.Log($"[CursedGobletEffect] Player {source.OwnerId} spawned Cursed Goblet.");
+        }
+    }
     public class MultiHitEffect : ICardEffect
     {
         public int HitCount;
@@ -319,7 +292,7 @@ namespace FogClouds
         }
     }
 
-    // TotemOfSharpnessEffect — spawns TotemOfSharpness permanent (2 turns)
+    // TotemOfSharpnessEffect — spawns TotemOfSharpness permanent (2 turns, +3 attack damage)
     public class TotemOfSharpnessEffect : ICardEffect
     {
         public void Apply(QueueEntry source, GameState state)
@@ -327,7 +300,7 @@ namespace FogClouds
             var player = state.GetPlayer(source.OwnerId);
             var totem = new TotemOfSharpness(source.OwnerId, bonusDamage: 3, turnsRemaining: 2) { SourceCard = source.Card };
             state.AssignPermanentInstanceId(totem);
-            player.Board.Add(totem);
+            player.AddPermanent(totem);
             Debug.Log($"[TotemOfSharpnessEffect] Player {source.OwnerId} spawned Totem of Sharpness.");
         }
     }
@@ -397,7 +370,7 @@ namespace FogClouds
             var player = state.GetPlayer(source.OwnerId);
             var mirror = new MirrorOfMoonlight(source.OwnerId, turnsRemaining: 2) { SourceCard = source.Card };
             state.AssignPermanentInstanceId(mirror);
-            player.Board.Add(mirror);
+            player.AddPermanent(mirror);
             player.MirrorActive = true;
             player.MirrorTurnsRemaining = 2;
             Debug.Log($"[MirrorOfMoonlightEffect] Player {source.OwnerId} activated Mirror of Moonlight for 2 turns.");
@@ -412,7 +385,7 @@ namespace FogClouds
             var player = state.GetPlayer(source.OwnerId);
             var totem = new TotemOfSacrifice(source.OwnerId) { SourceCard = source.Card };
             state.AssignPermanentInstanceId(totem);
-            player.Board.Add(totem);
+            player.AddPermanent(totem);
             Debug.Log($"[TotemOfSacrificeEffect] Player {source.OwnerId} spawned Totem of Sacrifice.");
         }
     }
@@ -491,7 +464,7 @@ namespace FogClouds
             var player = state.GetPlayer(source.OwnerId);
             var totem = new TotemOfProgress(source.OwnerId, turnsRemaining: 3) { SourceCard = source.Card };
             state.AssignPermanentInstanceId(totem);
-            player.Board.Add(totem);
+            player.AddPermanent(totem);
             Debug.Log($"[TotemOfProgressEffect] Player {source.OwnerId} spawned Totem of Progress.");
         }
     }
@@ -842,7 +815,7 @@ namespace FogClouds
             var player = state.GetPlayer(source.OwnerId);
             var totem = new TotemOfWarding(source.OwnerId) { SourceCard = source.Card };
             state.AssignPermanentInstanceId(totem);
-            player.Board.Add(totem);
+            player.AddPermanent(totem);
             Debug.Log($"[TotemOfWardingEffect] Player {source.OwnerId} spawned Totem of Warding.");
         }
     }

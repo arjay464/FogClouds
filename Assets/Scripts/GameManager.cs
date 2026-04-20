@@ -60,8 +60,8 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void InitializeGame()
     {
-        var p0Character = Resources.Load<CharacterData>("Characters/thessa");
-        var p1Character = Resources.Load<CharacterData>("Characters/thessa");
+        var p0Character = CharacterLibrary.Instance.Get("thessa");
+        var p1Character = CharacterLibrary.Instance.Get("thessa");
 
         if (p0Character == null || p1Character == null)
         {
@@ -335,14 +335,11 @@ public class GameManager : NetworkBehaviour
 
         if (_gameState.GameOver)
         {
-            if (_gameState.GameOver)
-            {
-                RevealAllFog();
-                Debug.Log($"[GameManager] Game over. Winner: Player {_gameState.WinnerPlayerId}");
-                StateRelay.Instance.BroadcastToAll();
-                // await rematch votes
-                return;
-            }
+            RevealAllFog();
+            Debug.Log($"[GameManager] Game over. Winner: Player {_gameState.WinnerPlayerId}");
+            StateRelay.Instance.BroadcastToAll();
+            // await rematch votes
+            return;
         }
 
         AdvancePhase();
@@ -530,8 +527,6 @@ public class GameManager : NetworkBehaviour
         }
 
         player.CardsQueuedThisTurn++;
-        var opponent = _gameState.GetOpponent(playerId);
-        opponent.CardsQueuedThisTurn++;
 
         AwardSilver(player, 2, "card queued");
         StateRelay.Instance.BroadcastToAll();
@@ -597,10 +592,9 @@ public class GameManager : NetworkBehaviour
             if (entry.WasUpcast)
             {
                 var caster = _gameState.GetPlayer(entry.OwnerId);
-                if (caster.Board.Any(p => p.PermanentId == "totem_of_progress"))
+                foreach (var listener in caster.OnCardResolvedListeners)
                 {
-                    caster.DrawCards(1, _gameState.Rng);
-                    Debug.Log($"[GameManager] Totem of Progress triggered — Player {entry.OwnerId} drew 1 card.");
+                    listener.OnCardResolved(entry, caster, _gameState);
                 }
             }
 
@@ -626,25 +620,24 @@ public class GameManager : NetworkBehaviour
     {
         var deckList = new List<(string cardId, int copies)>
         {
-            ("KnifeStrikeBase",  4),
-            ("Cultellara",       1),
-            ("Brace",            4),
-            ("ChaChaCard",       1),
-            ("Cultivita",        1),
+            ("knife_strike_base", 4),
+            ("cultellara",        1),
+            ("brace",             4),
+            ("cha_cha_card",      1),
+            ("cultivita",         1),
         };
 
-        int instanceId = player.PlayerId * 100;
         foreach (var (cardId, copies) in deckList)
         {
-            var definition = Resources.Load<CardDefinition>($"Cards/{cardId}");
+            var definition = CardLibrary.Instance.Get(cardId);
             if (definition == null)
             {
-                Debug.LogWarning($"[GameManager] Could not load CardDefinition: Cards/{cardId}");
+                Debug.LogWarning($"[GameManager] Could not load CardDefinition: {cardId}");
                 continue;
             }
 
             for (int i = 0; i < copies; i++)
-                player.Deck.Add(new CardInstance(definition, instanceId++));
+                player.Deck.Add(new CardInstance(definition, _gameState.GenerateInstanceId()));
         }
 
         player.ShuffleDeck(_gameState.Rng);
@@ -664,7 +657,7 @@ public class GameManager : NetworkBehaviour
             {
                 Debug.Log($"[GameManager] {permanent.DisplayName} expired for Player {player.PlayerId}.");
                 if (permanent.SourceCard != null) { player.Discard.Add(permanent.SourceCard); }
-                player.Board.RemoveAt(i);
+                player.RemovePermanent(player.Board[i]);
             }
         }
     }
@@ -858,9 +851,10 @@ public class GameManager : NetworkBehaviour
         if (bloodCost > 0)
         {
             int reduction = 0;
-            foreach (var permanent in player.Board)
-                if (permanent.PermanentId == "totem_of_sacrifice")
-                    reduction++;
+            foreach (var mod in player.BloodCostModifiers)
+            {
+                bloodCost = mod.ModifyBloodCost(bloodCost);
+            }
             bloodCost = Mathf.Max(1, bloodCost - reduction);
         }
 
@@ -1298,32 +1292,20 @@ public class GameManager : NetworkBehaviour
         StateRelay.Instance.BroadcastToAll();
     }
 
-    [Server]
     private void AddCardToDeck(PlayerState player, string cardId)
     {
-        var definition = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
+        var definition = CardLibrary.Instance.Get(cardId);
         if (definition == null)
         {
             Debug.LogWarning($"[GameManager] Could not load CardDefinition for: {cardId}");
             return;
         }
 
-        int instanceId = player.PlayerId * 100 + player.Deck.Count + player.Discard.Count + player.Hand.Count;
         var instance = new CardInstance(definition, _gameState.GenerateInstanceId());
 
-        // Insert at random position in draw pile rather than shuffling
         int insertAt = _gameState.Rng.Next(player.Deck.Count + 1);
         player.Deck.Insert(insertAt, instance);
         Debug.Log($"[GameManager] Added {cardId} to Player {player.PlayerId}'s deck at position {insertAt}/{player.Deck.Count - 1}.");
-    }
-
-    [Server]
-    private string CardIdToAssetName(string cardId)
-    {
-        // Convert snake_case to PascalCase
-        var parts = cardId.Split('_');
-        return string.Concat(System.Array.ConvertAll(parts,
-            p => char.ToUpper(p[0]) + p.Substring(1)));
     }
 
     [Server]
@@ -1536,7 +1518,7 @@ public class GameManager : NetworkBehaviour
     {
         var passive = new Passive { PassiveId = passiveId, DisplayName = passiveId, StackCount = 1 };
         player.Passives.Add(passive);
-        var effect = PassiveRegistry.Instance.GetEffect(passiveId);
+        var effect = PassiveEffectRegistry.Instance.GetEffect(passiveId);
         effect?.OnAcquire(player, _gameState);
         Debug.Log($"[GameManager] Player {player.PlayerId} acquired passive: {passiveId}");
     }
@@ -1666,7 +1648,7 @@ public class GameManager : NetworkBehaviour
     {
         foreach (var passive in player.Passives)
         {
-            var effect = PassiveRegistry.Instance.GetEffect(passive.PassiveId);
+            var effect = PassiveEffectRegistry.Instance.GetEffect(passive.PassiveId);
             effect?.OnTurnStart(player, _gameState);
         }
     }

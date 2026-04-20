@@ -3,8 +3,9 @@ using UnityEngine;
 
 namespace FogClouds
 {
-    //Permanent Interfaces
+    // ——— PERMANENT INTERFACES ———————————————————————————
 
+    // Modifies outgoing or incoming damage in DealDamageEffect.
     public interface IDamageModifier
     {
         int ModifyDamage(int damage, bool isAttacker);
@@ -14,12 +15,26 @@ namespace FogClouds
     {
         int ModifyDraw(int drawCount);
     }
-    // New interface — fires when owner takes damage from opponent
+
+    // Fires when owner takes HP damage from opponent.
     public interface IDamageTakenReactor
     {
         void OnDamageTakenFromOpponent(PlayerState owner, PlayerState attacker, int amount, GameState state);
     }
 
+    // Modifies blood costs in GameManager.DeductCost.
+    public interface IBloodCostModifier
+    {
+        int ModifyBloodCost(int cost);
+    }
+
+    // Fires after each card resolves during QueueResolution.
+    public interface IOnCardResolved
+    {
+        void OnCardResolved(QueueEntry entry, PlayerState owner, GameState state);
+    }
+
+    // ——— BASE CLASS —————————————————————————————————————
 
     [Serializable]
     public class BoardPermanent
@@ -32,14 +47,19 @@ namespace FogClouds
         // Set true by Lex Noctis — prevents destruction this turn. Cleared at TurnStart.
         public bool ProtectedThisTurn;
 
-        //Turns remaining before this permanent expires. -1 = lasts until removed.
+        // Turns remaining before this permanent expires. -1 = lasts until removed.
         public int TurnsRemaining;
 
         public CardInstance SourceCard;
 
-        //Stub for phase 0 - board permanents should have some effect defined
-
         public BoardPermanent() { }
+
+        // Called by PlayerState.AddPermanent — subclasses register into indexed collections here.
+        // Never called on cloned instances (snapshots don't need indices).
+        public virtual void OnAdded(PlayerState player) { }
+
+        // Called by PlayerState.RemovePermanent — subclasses deregister from indexed collections here.
+        public virtual void OnRemoved(PlayerState player) { }
 
         public virtual BoardPermanent Clone()
         {
@@ -54,10 +74,33 @@ namespace FogClouds
                 SourceCard = this.SourceCard
             };
         }
+
         public virtual void OnTurnStart()
         {
             ProtectedThisTurn = false;
         }
+    }
+
+    // ——— INERT PERMANENT ————————————————————————————————
+    // For permanents whose behavior is fully handled at play time (e.g. MirrorOfMoonlight).
+    // No board-side hooks needed — OnAdded/OnRemoved are no-ops from the base.
+    [Serializable]
+    public class InertPermanent : BoardPermanent
+    {
+        public InertPermanent(string permanentId, string displayName, int ownerId, int turnsRemaining)
+        {
+            PermanentId = permanentId;
+            DisplayName = displayName;
+            OwnerId = ownerId;
+            TurnsRemaining = turnsRemaining;
+        }
+
+        public override BoardPermanent Clone() =>
+            new InertPermanent(PermanentId, DisplayName, OwnerId, TurnsRemaining)
+            {
+                InstanceId = this.InstanceId,
+                SourceCard = this.SourceCard
+            };
     }
 
     //Permanent Subclasses
@@ -78,24 +121,21 @@ namespace FogClouds
             BonusDamage = bonusDamage;
         }
 
+        public override void OnAdded(PlayerState player) => player.DamageModifiers.Add(this);
+        public override void OnRemoved(PlayerState player) => player.DamageModifiers.Remove(this);
+
         public int ModifyDamage(int damage, bool isAttacker)
         {
             if (!isAttacker) return damage;
             return damage + BonusDamage;
         }
 
-        public override BoardPermanent Clone()
-        {
-            return new ChaCha(OwnerId, BonusDamage)
-            {
-                TurnsRemaining = this.TurnsRemaining
-            };
-        }
+        public override BoardPermanent Clone() =>
+            new ChaCha(OwnerId, BonusDamage) { InstanceId = this.InstanceId, TurnsRemaining = this.TurnsRemaining, SourceCard = this.SourceCard };
     }
 
     // Cursed Goblet
-    // Reduces incoming damage by a percentage, rounded up (favorable to defender).
-    // Duration: permanent until destroyed.
+    // Reduces incoming damage by a percentage, rounded down. Duration: permanent until destroyed.
     [Serializable]
     public class CursedGoblet : BoardPermanent, IDamageModifier
     {
@@ -110,19 +150,17 @@ namespace FogClouds
             ReductionPercent = reductionPercent;
         }
 
+        public override void OnAdded(PlayerState player) => player.DamageModifiers.Add(this);
+        public override void OnRemoved(PlayerState player) => player.DamageModifiers.Remove(this);
+
         public int ModifyDamage(int damage, bool isAttacker)
         {
             if (isAttacker) return damage;
             return Mathf.FloorToInt(damage * (1f - ReductionPercent));
         }
 
-        public override BoardPermanent Clone()
-        {
-            return new CursedGoblet(OwnerId, ReductionPercent)
-            {
-                TurnsRemaining = this.TurnsRemaining
-            };
-        }
+        public override BoardPermanent Clone() =>
+            new CursedGoblet(OwnerId, ReductionPercent) { InstanceId = this.InstanceId, TurnsRemaining = this.TurnsRemaining, SourceCard = this.SourceCard };
     }
     // Totem of Sharpness — attacks costing a dagger or that were upcast gain +3 damage
     [Serializable]
@@ -139,8 +177,9 @@ namespace FogClouds
             BonusDamage = bonusDamage;
         }
 
-        // Called from DealDamageEffect — needs the source entry to check IsAttack + upcast
-        // For now uses isAttacker flag; full upcast check requires passing QueueEntry
+        public override void OnAdded(PlayerState player) => player.DamageModifiers.Add(this);
+        public override void OnRemoved(PlayerState player) => player.DamageModifiers.Remove(this);
+
         public int ModifyDamage(int damage, bool isAttacker)
         {
             if (!isAttacker) return damage;
@@ -148,28 +187,24 @@ namespace FogClouds
         }
 
         public override BoardPermanent Clone() =>
-            new TotemOfSharpness(OwnerId, BonusDamage, TurnsRemaining);
+            new TotemOfSharpness(OwnerId, BonusDamage, TurnsRemaining) { InstanceId = this.InstanceId, SourceCard = this.SourceCard };
     }
 
+    // Mirror of Moonlight — copies instants into the queue at speed 2.
+    // Behavior is handled entirely at play time in GameManager; no board-side hook needed.
     [Serializable]
-    public class MirrorOfMoonlight : BoardPermanent
+    public class MirrorOfMoonlight : InertPermanent
     {
         public MirrorOfMoonlight(int ownerId, int turnsRemaining)
-        {
-            PermanentId = "mirror_of_moonlight";
-            DisplayName = "Mirror of Moonlight";
-            OwnerId = ownerId;
-            TurnsRemaining = turnsRemaining;
-        }
-
+            : base("mirror_of_moonlight", "Mirror of Moonlight", ownerId, turnsRemaining) { }
 
         public override BoardPermanent Clone() =>
-            new MirrorOfMoonlight(OwnerId, TurnsRemaining);
+            new MirrorOfMoonlight(OwnerId, TurnsRemaining) { InstanceId = this.InstanceId, SourceCard = this.SourceCard };
     }
 
-    // Totem of Sacrifice — reduces blood costs by 1 (minimum 1), infinite duration
+    // Totem of Sacrifice — reduces blood costs by 1, minimum 1. Duration: infinite.
     [Serializable]
-    public class TotemOfSacrifice : BoardPermanent
+    public class TotemOfSacrifice : BoardPermanent, IBloodCostModifier
     {
         public TotemOfSacrifice(int ownerId)
         {
@@ -179,13 +214,18 @@ namespace FogClouds
             TurnsRemaining = -1;
         }
 
+        public override void OnAdded(PlayerState player) => player.BloodCostModifiers.Add(this);
+        public override void OnRemoved(PlayerState player) => player.BloodCostModifiers.Remove(this);
+
+        public int ModifyBloodCost(int cost) => Mathf.Max(1, cost - 1);
+
         public override BoardPermanent Clone() =>
-            new TotemOfSacrifice(OwnerId) { TurnsRemaining = this.TurnsRemaining };
+            new TotemOfSacrifice(OwnerId) { InstanceId = this.InstanceId, TurnsRemaining = this.TurnsRemaining, SourceCard = this.SourceCard };
     }
 
-    // Totem of Progress — upcast cards draw 1 card on resolution
+    // Totem of Progress — upcast cards draw 1 card on resolution. Duration: 3 turns.
     [Serializable]
-    public class TotemOfProgress : BoardPermanent
+    public class TotemOfProgress : BoardPermanent, IOnCardResolved
     {
         public TotemOfProgress(int ownerId, int turnsRemaining)
         {
@@ -195,11 +235,21 @@ namespace FogClouds
             TurnsRemaining = turnsRemaining;
         }
 
+        public override void OnAdded(PlayerState player) => player.OnCardResolvedListeners.Add(this);
+        public override void OnRemoved(PlayerState player) => player.OnCardResolvedListeners.Remove(this);
+
+        public void OnCardResolved(QueueEntry entry, PlayerState owner, GameState state)
+        {
+            if (!entry.WasUpcast) return;
+            owner.DrawCards(1, state.Rng);
+            Debug.Log($"[TotemOfProgress] Player {owner.PlayerId} drew 1 card from upcast.");
+        }
+
         public override BoardPermanent Clone() =>
-            new TotemOfProgress(OwnerId, TurnsRemaining);
+            new TotemOfProgress(OwnerId, TurnsRemaining) { InstanceId = this.InstanceId, SourceCard = this.SourceCard };
     }
 
-    // Totem of Warding — when opponent deals damage to you, apply 1 bleed to them. Duration: 2.
+    // Totem of Warding — when opponent deals HP damage to you, apply 1 bleed to them. Duration: 2.
     [Serializable]
     public class TotemOfWarding : BoardPermanent, IDamageTakenReactor
     {
@@ -211,6 +261,9 @@ namespace FogClouds
             TurnsRemaining = 2;
         }
 
+        public override void OnAdded(PlayerState player) => player.DamageTakenReactors.Add(this);
+        public override void OnRemoved(PlayerState player) => player.DamageTakenReactors.Remove(this);
+
         public void OnDamageTakenFromOpponent(PlayerState owner, PlayerState attacker, int amount, GameState state)
         {
             attacker.ApplyStatusEffect(new StatusEffect("bleed", value: 1, duration: -1));
@@ -218,6 +271,6 @@ namespace FogClouds
         }
 
         public override BoardPermanent Clone() =>
-            new TotemOfWarding(OwnerId) { TurnsRemaining = this.TurnsRemaining };
+            new TotemOfWarding(OwnerId) { InstanceId = this.InstanceId, TurnsRemaining = this.TurnsRemaining, SourceCard = this.SourceCard };
     }
 }

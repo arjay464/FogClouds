@@ -25,6 +25,9 @@ public class HandController : MonoBehaviour
     //targeting state
     public bool IsTargeting => _pendingHandTargetCard != null;
 
+    //Scriptable Object
+    [SerializeField] private VisualTreeAsset _cardViewTemplate;
+
     void OnDisable()
     {
         if (ClientStateManager.Instance != null)
@@ -53,6 +56,8 @@ public class HandController : MonoBehaviour
             ClientStateManager.Instance.OnStateUpdated += Refresh;
 
         _hud = FindFirstObjectByType<GameHUDController>();
+
+        CardView.SetTemplate(_cardViewTemplate);
     }
 
     private void Refresh(ClientGameStateView view)

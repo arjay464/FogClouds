@@ -2,8 +2,6 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using FogClouds;
 using System;
-using System.Collections.Generic;
-using Unity.VisualScripting;
 
 public class CardView : VisualElement
 {
@@ -19,14 +17,13 @@ public class CardView : VisualElement
     private Label _bloodCost;
     private Label _speedLabel;
 
-    private static Dictionary<string, CardDefinition> _defCache = new();
+    private static VisualTreeAsset _cardViewTemplate;
 
+    public static void SetTemplate(VisualTreeAsset template) => _cardViewTemplate = template;
 
     public CardView(CardInstanceView data)
     {
-        // Load and clone the UXML template
-        var template = Resources.Load<VisualTreeAsset>("UI/CardView");
-        template.CloneTree(this);
+        _cardViewTemplate.CloneTree(this);
 
         _nameLabel = this.Q<Label>("card-name");
         _daggerPips = this.Q<VisualElement>("dagger-pips");
@@ -155,23 +152,10 @@ public class CardView : VisualElement
         else
             cardRoot.RemoveFromClassList("card-dragging");
     }
-    private static string CardIdToAssetName(string cardId)
-    {
-        // Convert snake_case to PascalCase
-        var parts = cardId.Split('_');
-        return string.Concat(System.Array.ConvertAll(parts,
-            p => char.ToUpper(p[0]) + p.Substring(1)));
-    }
 
     private static CardDefinition LoadDef(string cardId)
     {
-        if (!_defCache.TryGetValue(cardId, out var def))
-        {
-            def = Resources.Load<CardDefinition>($"Cards/{CardIdToAssetName(cardId)}");
-            if (def != null) _defCache[cardId] = def;
-        }
-        Debug.Log($"[LoadDef] ({def == null})");
-        if (def != null) { Debug.Log($"[LoadDef] TXT = {def.FlavourText}"); }
+        var def = CardLibrary.Instance.Get(cardId);
         return def;
     }
 }
